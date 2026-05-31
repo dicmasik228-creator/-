@@ -1,10 +1,8 @@
--- ========== ЗАГРУЗКА БИБЛИОТЕК ==========
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
 local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
--- ========== СОЗДАНИЕ ОКНА МЕНЮ ==========
 local Window = Library:CreateWindow({
     Title = "BROKEN SPAWN",
     Footer = "by MEHKO МЕРУЛЕК",
@@ -12,7 +10,6 @@ local Window = Library:CreateWindow({
     ShowCustomCursor = true,
 })
 
--- ========== СОЗДАНИЕ ВКЛАДОК ==========
 local Tabs = {
     Players = Window:AddTab("Players", "users"),
     Target = Window:AddTab("Target", "target"),
@@ -22,24 +19,19 @@ local Tabs = {
     Settings = Window:AddTab("Settings", "settings"),
 }
 
--- ========== ВКЛАДКА PLAYERS (НАСТРОЙКИ) ==========
 local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки")
 
--- ========== 3 ВИД ==========
 local thirdPersonActive = false
-
 local function enableThirdPerson()
     local player = game.Players.LocalPlayer
     player.CameraMode = Enum.CameraMode.Classic
     player.CameraMaxZoomDistance = 50
     player.CameraMinZoomDistance = 0.5
 end
-
 local function disableThirdPerson()
     local player = game.Players.LocalPlayer
     player.CameraMode = Enum.CameraMode.LockFirstPerson
 end
-
 PlayersGroup:AddToggle("ThirdPerson", {
     Text = "3 Вид",
     Default = false,
@@ -48,25 +40,19 @@ PlayersGroup:AddToggle("ThirdPerson", {
         if Value then enableThirdPerson() else disableThirdPerson() end
     end
 })
--- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== УСКОРЕНИЕ (ТОЛКАЕТ ВПЕРЁД) ==========
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
-local speedSteppedConnection = nil  -- добавил для дополнительной защиты
-
+local speedSteppedConnection = nil
 local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
     Text = "Сила ускорения",
     Default = 30,
     Min = 0,
     Max = 10000,
     Rounding = 0,
-    Callback = function(Value)
-        currentSpeedValue = Value
-    end
+    Callback = function(Value) currentSpeedValue = Value end
 })
-
 local function applySpeed()
     if not speedActive then return end
     local char = game.Players.LocalPlayer.Character
@@ -75,78 +61,48 @@ local function applySpeed()
     if not hrp then return end
     local hum = char:FindFirstChild("Humanoid")
     if not hum then return end
-    
     local moveDirection = hum.MoveDirection
     if moveDirection.Magnitude > 0 then
         local velocity = moveDirection.Unit * currentSpeedValue
         hrp.Velocity = Vector3.new(velocity.X, hrp.Velocity.Y, velocity.Z)
     end
 end
-
 local function startSpeedBoost()
     if speedConnection then speedConnection:Disconnect() end
     if speedSteppedConnection then speedSteppedConnection:Disconnect() end
-    
-    -- Используем Stepped вместо Heartbeat для более стабильного отключения
-    speedConnection = game:GetService("RunService").Stepped:Connect(function()
-        applySpeed()
-    end)
-    
-    -- Дополнительная защита: каждые 0.1 секунды обнуляем скорость если ускорение выключено
+    speedConnection = game:GetService("RunService").Stepped:Connect(applySpeed)
     speedSteppedConnection = game:GetService("RunService").Stepped:Connect(function()
         if not speedActive then
             local char = game.Players.LocalPlayer.Character
             if char then
                 local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    hrp.Velocity = Vector3.new(hrp.Velocity.X, hrp.Velocity.Y, hrp.Velocity.Z)
-                end
+                if hrp then hrp.Velocity = Vector3.new(hrp.Velocity.X, hrp.Velocity.Y, hrp.Velocity.Z) end
             end
         end
     end)
 end
-
 local function stopSpeedBoost()
-    if speedConnection then
-        speedConnection:Disconnect()
-        speedConnection = nil
-    end
-    if speedSteppedConnection then
-        speedSteppedConnection:Disconnect()
-        speedSteppedConnection = nil
-    end
-    -- Принудительно останавливаем персонажа
+    if speedConnection then speedConnection:Disconnect() end
+    if speedSteppedConnection then speedSteppedConnection:Disconnect() end
     local char = game.Players.LocalPlayer.Character
     if char then
         local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            hrp.Velocity = Vector3.zero
-        end
+        if hrp then hrp.Velocity = Vector3.zero end
         local hum = char:FindFirstChild("Humanoid")
-        if hum then
-            hum.WalkSpeed = 16  -- сбрасываем скорость до стандартной
-        end
+        if hum then hum.WalkSpeed = 16 end
     end
 end
-
 PlayersGroup:AddToggle("SpeedToggle", {
     Text = "Ускорение (толкает вперёд)",
     Default = false,
     Callback = function(Value)
         speedActive = Value
-        if Value then
-            startSpeedBoost()
-        else
-            stopSpeedBoost()
-        end
+        if Value then startSpeedBoost() else stopSpeedBoost() end
     end
 })
--- ========== КОНЕЦ УСКОРЕНИЯ ==========
 
--- ========== СИЛА ПРЫЖКА (ВКЛЮЧАТЕЛЬ/ВЫКЛЮЧАТЕЛЬ) ==========
 local jumpActive = false
 local jumpPowerValue = 50
-
 local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
     Text = "Сила прыжка",
     Default = 50,
@@ -163,49 +119,31 @@ local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
         end
     end
 })
-
 local function applyJumpPower()
     local char = game.Players.LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
         char.Humanoid.JumpPower = jumpPowerValue
-        Library:Notify({
-            Title = "BROKEN SPAWN",
-            Description = "Сила прыжка: " .. jumpPowerValue,
-            Duration = 2
-        })
+        Library:Notify({Title = "BROKEN SPAWN", Description = "Сила прыжка: " .. jumpPowerValue, Duration = 2})
     end
 end
-
 local function resetJumpPower()
     local char = game.Players.LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
         char.Humanoid.JumpPower = 50
-        Library:Notify({
-            Title = "BROKEN SPAWN",
-            Description = "Сила прыжка сброшена до 50",
-            Duration = 2
-        })
+        Library:Notify({Title = "BROKEN SPAWN", Description = "Сила прыжка сброшена до 50", Duration = 2})
     end
 end
-
 PlayersGroup:AddToggle("JumpToggle", {
     Text = "Увеличенный прыжок",
     Default = false,
     Callback = function(Value)
         jumpActive = Value
-        if Value then
-            applyJumpPower()
-        else
-            resetJumpPower()
-        end
+        if Value then applyJumpPower() else resetJumpPower() end
     end
 })
--- ========== КОНЕЦ СИЛЫ ПРЫЖКА ==========
 
--- ========== БЕСКОНЕЧНЫЙ ПРЫЖОК ==========
 local infiniteJumpActive = false
 local infiniteJumpConnection = nil
-
 local function startInfiniteJump()
     if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
     infiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
@@ -217,32 +155,20 @@ local function startInfiniteJump()
         end
     end)
 end
-
 local function stopInfiniteJump()
-    if infiniteJumpConnection then
-        infiniteJumpConnection:Disconnect()
-        infiniteJumpConnection = nil
-    end
+    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
 end
-
 PlayersGroup:AddToggle("InfiniteJump", {
     Text = "Бесконечный прыжок",
     Default = false,
     Callback = function(Value)
         infiniteJumpActive = Value
-        if Value then
-            startInfiniteJump()
-        else
-            stopInfiniteJump()
-        end
+        if Value then startInfiniteJump() else stopInfiniteJump() end
     end
 })
--- ========== КОНЕЦ БЕСКОНЕЧНОГО ПРЫЖКА ==========
 
--- ========== ПРОХОЖДЕНИЕ СКВОЗЬ СТЕНЫ (NOCLIP) ==========
 local noclipActive = false
 local noclipConnection = nil
-
 local function startNoclip()
     if noclipConnection then noclipConnection:Disconnect() end
     noclipConnection = game:GetService("RunService").Stepped:Connect(function()
@@ -250,50 +176,32 @@ local function startNoclip()
             local char = game.Players.LocalPlayer.Character
             if char then
                 for _, part in pairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
+                    if part:IsA("BasePart") then part.CanCollide = false end
                 end
             end
         end
     end)
 end
-
 local function stopNoclip()
-    if noclipConnection then
-        noclipConnection:Disconnect()
-        noclipConnection = nil
-    end
+    if noclipConnection then noclipConnection:Disconnect() end
     local char = game.Players.LocalPlayer.Character
     if char then
         for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
+            if part:IsA("BasePart") then part.CanCollide = true end
         end
     end
 end
-
 PlayersGroup:AddToggle("Noclip", {
     Text = "Прохождение сквозь стены",
     Default = false,
     Callback = function(Value)
         noclipActive = Value
-        if Value then
-            startNoclip()
-        else
-            stopNoclip()
-        end
+        if Value then startNoclip() else stopNoclip() end
     end
 })
--- ========== КОНЕЦ ПРОХОЖДЕНИЯ СКВОЗЬ СТЕНЫ ==========
 
--- ========== КОНЕЦ ВКЛАДКИ PLAYERS ==========
-
--- ========== ВКЛАДКА DEFENSE (ЗАЩИТА) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
--- ========== АНТИ ГРАБ ==========
 local LocalPlayer = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -301,7 +209,6 @@ local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and Replica
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
 local autoStruggleConn = nil
-
 DefenseGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
@@ -336,13 +243,9 @@ DefenseGroup:AddToggle("AntiGrab", {
         end
     end
 })
--- ========== КОНЕЦ АНТИ ГРАБ ==========
 
--- ========== АНТИ ЛАГ ==========
 local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
-
 local antiLagActive = false
-
 local function setupAntiLag()
     local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
     if grabFolder then
@@ -355,7 +258,6 @@ local function setupAntiLag()
         if v:IsA("Beam") then v:Destroy() end
     end
 end
-
 AntiLagGroup:AddToggle("AntiLag", {
     Text = "Анти Лаг",
     Default = false,
@@ -364,64 +266,111 @@ AntiLagGroup:AddToggle("AntiLag", {
         if Value then setupAntiLag() end
     end
 })
--- ========== КОНЕЦ АНТИ ЛАГ ==========
--- ========== КОНЕЦ ВКЛАДКИ DEFENSE ==========
 
--- ========== ОПТИМИЗАЦИЯ (РАБОТАЕТ В ФОНЕ) ==========
+local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
+
+-- ========== ЛАГ СЕРВЕРА ==========
+local lagActive = false
+local lagPower = 1000
+local lagConnection = nil
+local lagPacketSkip = 0
+
+local lagSlider = SmileGroup:AddSlider("LagPower", {
+    Text = "Мощность лага",
+    Default = 1000,
+    Min = 10,
+    Max = 10000,
+    Rounding = 0,
+    Callback = function(Value)
+        lagPower = Value
+    end
+})
+
+local function startLag()
+    if lagConnection then lagConnection:Disconnect() end
+    
+    local grabEvent = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("ExtendGrabLine")
+    if not grabEvent then
+        Library:Notify({Title = "Ошибка", Description = "GrabEvent не найден", Duration = 3})
+        return
+    end
+    
+    lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not lagActive then return end
+        
+        lagPacketSkip = lagPacketSkip + 1
+        if lagPacketSkip % 5 == 0 then
+            local packetsPerFrame = math.floor(lagPower / 60)
+            if packetsPerFrame < 1 then packetsPerFrame = 1 end
+            if packetsPerFrame > 100 then packetsPerFrame = 100 end
+            
+            for i = 1, packetsPerFrame do
+                pcall(function()
+                    grabEvent:FireServer(string.rep("A", 500))
+                end)
+            end
+        end
+    end)
+    
+    Library:Notify({Title = "Лаг сервера", Description = "Включён (" .. lagPower .. " пакетов/сек)", Duration = 3})
+end
+
+local function stopLag()
+    if lagConnection then
+        lagConnection:Disconnect()
+        lagConnection = nil
+    end
+    Library:Notify({Title = "Лаг сервера", Description = "Выключен", Duration = 2})
+end
+
+SmileGroup:AddToggle("LagToggle", {
+    Text = "Включить лаг сервера",
+    Default = false,
+    Callback = function(Value)
+        lagActive = Value
+        if Value then
+            startLag()
+        else
+            stopLag()
+        end
+    end
+})
+
 task.spawn(function()
     print("✅ Оптимизация запущена")
-    
     local lighting = game:GetService("Lighting")
     lighting.GlobalShadows = false
     lighting.Brightness = 1
     lighting.ClockTime = 14
-    
     for _, v in ipairs(lighting:GetChildren()) do
         if v:IsA("BlurEffect") or v:IsA("BloomEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") then
             v.Enabled = false
         end
     end
-    
     while true do
         task.wait(15)
-        
         collectgarbage("collect")
         collectgarbage("step", 50)
-        
         for _, v in ipairs(workspace:GetDescendants()) do
             if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
                 v.Enabled = false
                 v:Destroy()
             end
-            if v:IsA("Beam") then
-                v:Destroy()
-            end
-            if v:IsA("Decal") and v.Name ~= "PartOwner" then
-                v:Destroy()
-            end
-            if v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight") then
-                v.Enabled = false
-            end
+            if v:IsA("Beam") then v:Destroy() end
+            if v:IsA("Decal") and v.Name ~= "PartOwner" then v:Destroy() end
+            if v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight") then v.Enabled = false end
         end
-        
         for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
-            if v:IsA("ParticleEmitter") then
-                v.Enabled = false
-            end
+            if v:IsA("ParticleEmitter") then v.Enabled = false end
         end
-        
         lighting.GlobalShadows = false
         lighting.Brightness = 1
         lighting.ClockTime = 14
     end
 end)
--- ========== КОНЕЦ ОПТИМИЗАЦИИ ==========
 
--- ========== ВКЛАДКА SETTINGS (НАСТРОЙКИ UI) ==========
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
-UIGroup:AddButton("Unload", function()
-    Library:Unload()
-end)
+UIGroup:AddButton("Unload", function() Library:Unload() end)
 
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
@@ -431,6 +380,5 @@ SaveManager:SetFolder("BrokenSpawn/Configs")
 ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
--- ========== КОНЕЦ ВКЛАДКИ SETTINGS ==========
 
-print("✅ Меню загружено | Ускорение толкает вперёд | Сила прыжка | Бесконечный прыжок | Прохождение сквозь стены")
+print("✅ Меню загружено | Ускорение | Сила прыжка | Бесконечный прыжок | Noclip | Анти Граб | Анти Лаг | Лаг сервера")
