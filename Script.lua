@@ -54,6 +54,7 @@ PlayersGroup:AddToggle("ThirdPerson", {
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
+local speedSteppedConnection = nil  -- добавил для дополнительной защиты
 
 local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
     Text = "Сила ускорения",
@@ -66,27 +67,66 @@ local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
     end
 })
 
+local function applySpeed()
+    if not speedActive then return end
+    local char = game.Players.LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local hum = char:FindFirstChild("Humanoid")
+    if not hum then return end
+    
+    local moveDirection = hum.MoveDirection
+    if moveDirection.Magnitude > 0 then
+        local velocity = moveDirection.Unit * currentSpeedValue
+        hrp.Velocity = Vector3.new(velocity.X, hrp.Velocity.Y, velocity.Z)
+    end
+end
+
 local function startSpeedBoost()
     if speedConnection then speedConnection:Disconnect() end
-    speedConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not speedActive then return end
-        local char = game.Players.LocalPlayer.Character
-        if not char then return end
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        local hum = char:FindFirstChild("Humanoid")
-        if not hum then return end
-        
-        local moveDirection = hum.MoveDirection
-        if moveDirection.Magnitude > 0 then
-            local velocity = moveDirection.Unit * currentSpeedValue
-            hrp.Velocity = Vector3.new(velocity.X, hrp.Velocity.Y, velocity.Z)
+    if speedSteppedConnection then speedSteppedConnection:Disconnect() end
+    
+    -- Используем Stepped вместо Heartbeat для более стабильного отключения
+    speedConnection = game:GetService("RunService").Stepped:Connect(function()
+        applySpeed()
+    end)
+    
+    -- Дополнительная защита: каждые 0.1 секунды обнуляем скорость если ускорение выключено
+    speedSteppedConnection = game:GetService("RunService").Stepped:Connect(function()
+        if not speedActive then
+            local char = game.Players.LocalPlayer.Character
+            if char then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    hrp.Velocity = Vector3.new(hrp.Velocity.X, hrp.Velocity.Y, hrp.Velocity.Z)
+                end
+            end
         end
     end)
 end
 
 local function stopSpeedBoost()
-    if speedConnection then speedConnection:Disconnect() end
+    if speedConnection then
+        speedConnection:Disconnect()
+        speedConnection = nil
+    end
+    if speedSteppedConnection then
+        speedSteppedConnection:Disconnect()
+        speedSteppedConnection = nil
+    end
+    -- Принудительно останавливаем персонажа
+    local char = game.Players.LocalPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Velocity = Vector3.zero
+        end
+        local hum = char:FindFirstChild("Humanoid")
+        if hum then
+            hum.WalkSpeed = 16  -- сбрасываем скорость до стандартной
+        end
+    end
 end
 
 PlayersGroup:AddToggle("SpeedToggle", {
@@ -94,7 +134,11 @@ PlayersGroup:AddToggle("SpeedToggle", {
     Default = false,
     Callback = function(Value)
         speedActive = Value
-        if Value then startSpeedBoost() else stopSpeedBoost() end
+        if Value then
+            startSpeedBoost()
+        else
+            stopSpeedBoost()
+        end
     end
 })
 -- ========== КОНЕЦ УСКОРЕНИЯ ==========
