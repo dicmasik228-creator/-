@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с оптимизацией (каждые 10 сек) ]]
+-- [[ BROKEN SPAWN MENU - с Анти Граб, Анти Лаг и Оптимизацией ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -100,11 +100,10 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== ПЕРМАНЕНТНАЯ ОПТИМИЗАЦИЯ (КАЖДЫЕ 10 СЕКУНД) ==========
+-- ========== ОПТИМИЗАЦИЯ (РАБОТАЕТ ВСЕГДА) ==========
 local function startOptimization()
     print("✅ Оптимизация запущена (каждые 10 секунд)")
     
-    -- 1. ОТКЛЮЧАЕМ НЕНУЖНЫЕ ЭФФЕКТЫ В ЛАНДШАФТЕ
     local function optimizeLighting()
         local lighting = game:GetService("Lighting")
         lighting.GlobalShadows = false
@@ -121,7 +120,6 @@ local function startOptimization()
         end
     end
     
-    -- 2. ОПТИМИЗАЦИЯ РАБОЧЕГО ПРОСТРАНСТВА
     local function optimizeWorkspace()
         workspace.Gravity = 196.2
         workspace.FallenPartsDestroyHeight = -500
@@ -139,7 +137,6 @@ local function startOptimization()
         end
     end
     
-    -- 3. ОПТИМИЗАЦИЯ ИГРОКОВ
     local function optimizePlayers()
         for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
             if player.Character then
@@ -152,13 +149,11 @@ local function startOptimization()
         end
     end
     
-    -- 4. АВТОМАТИЧЕСКАЯ ОЧИСТКА ПАМЯТИ
     local function garbageCollector()
         collectgarbage("collect")
         collectgarbage("step", 50)
     end
     
-    -- 5. УДАЛЕНИЕ ЛИШНИХ ОБЪЕКТОВ
     local function cleanMisc()
         for _, v in ipairs(workspace:GetDescendants()) do
             if v:IsA("Beam") or (v.Name and (v.Name:lower():find("line") or v.Name:lower():find("grab"))) then
@@ -174,29 +169,25 @@ local function startOptimization()
         end
     end
     
-    -- 6. ОПТИМИЗАЦИЯ ЗВУКОВ
     local function optimizeSounds()
         local soundService = game:GetService("SoundService")
         soundService.Volume = 0.5
         soundService.RespectFilteringEnabled = false
     end
     
-    -- ВЫПОЛНЯЕМ ОДНОРАЗОВЫЕ ОПТИМИЗАЦИИ
     optimizeLighting()
     optimizeWorkspace()
     optimizeSounds()
     
-    -- ЗАПУСКАЕМ ЦИКЛИЧЕСКУЮ ОЧИСТКУ (каждые 10 секунд)
     task.spawn(function()
         while true do
-            task.wait(10)  -- ← КАЖДЫЕ 10 СЕКУНД
+            task.wait(10)
             garbageCollector()
             cleanMisc()
             optimizePlayers()
         end
     end)
     
-    -- СЛЕДИМ ЗА НОВЫМИ ОБЪЕКТАМИ
     workspace.DescendantAdded:Connect(function(obj)
         task.wait(0.1)
         if obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
@@ -207,17 +198,16 @@ local function startOptimization()
         end
     end)
     
-    print("✅ Оптимизация полностью запущена (очистка каждые 10 сек)")
+    print("✅ Оптимизация работает")
 end
 
--- ЗАПУСКАЕМ ОПТИМИЗАЦИЮ СРАЗУ
 startOptimization()
 -- ========== КОНЕЦ ОПТИМИЗАЦИИ ==========
 
 -- ========== ЗАЩИТА (ЛЕВАЯ ГРУППА) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
--- АНТИ ГРАБ
+-- АНТИ ГРАБ (РАБОЧИЙ)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -253,8 +243,8 @@ DefenseGroup:AddToggle("AntiGrab", {
                                     part.Anchored = true
                                 end
                             end
-                            local isHeld = LocalPlayer:FindFirstChild("IsHeld")
-                            while isHeld and isHeld.Value do
+                            local held = LocalPlayer:FindFirstChild("IsHeld")
+                            while held and held.Value do
                                 task.wait()
                             end
                             for _, part in pairs(character:GetChildren()) do
@@ -336,4 +326,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Оптимизация каждые 10 секунд")
+print("✅ Меню загружено | Анти Граб в защите | Анти Лаг справа | Оптимизация каждые 10 сек")
