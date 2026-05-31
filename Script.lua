@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - ПРОСТОЙ РАБОЧИЙ АНТИ ГРАБ ]]
+-- [[ BROKEN SPAWN MENU - с анти грабом из FTAP ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -100,7 +100,7 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== АНТИ ГРАБ (ПРОСТОЙ РАБОЧИЙ) ==========
+-- ========== АНТИ ГРАБ (ИЗ FTAP.lua) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -112,69 +112,59 @@ local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and Replica
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
 local antiGrabActive = false
-local savedPosition = nil
-local returnLoop = nil
-local currentHRP = nil
+local savedCFrame = nil
+local returnConnection = nil
+local antiGrabConnections = {}
 
--- СОХРАНЯЕМ ПОЗИЦИЮ
-local function saveMyPosition(hrp)
-    if hrp then
-        savedPosition = hrp.Position
-        print("📍 Позиция сохранена:", savedPosition)
-    end
-end
-
--- ЗАПУСКАЕМ ВОЗВРАТ
 local function startReturn(hrp)
-    if returnLoop then return end
+    if returnConnection then return end
+    if not hrp then return end
     
-    saveMyPosition(hrp)
-    currentHRP = hrp
+    savedCFrame = hrp.CFrame
     
-    returnLoop = RunService.Heartbeat:Connect(function()
+    returnConnection = RunService.Heartbeat:Connect(function()
         if not antiGrabActive then
-            if returnLoop then returnLoop:Disconnect() end
-            returnLoop = nil
+            if returnConnection then returnConnection:Disconnect() end
+            returnConnection = nil
             return
         end
         
-        local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+        local char = LocalPlayer.Character
+        local head = char and char:FindFirstChild("Head")
         local isGrabbed = head and head:FindFirstChild("PartOwner")
         local isHeldNow = isHeld and isHeld.Value
         
-        if (isGrabbed or isHeldNow) and currentHRP and currentHRP.Parent then
-            -- ВОЗВРАЩАЕМ НА МЕСТО
-            currentHRP.Position = savedPosition
-            currentHRP.Velocity = Vector3.zero
-            currentHRP.RotVelocity = Vector3.zero
+        if (isGrabbed or isHeldNow) and hrp and hrp.Parent then
+            hrp.CFrame = savedCFrame
+            hrp.Velocity = Vector3.zero
+            hrp.RotVelocity = Vector3.zero
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
         elseif not (isGrabbed or isHeldNow) then
-            -- Граб закончился - отключаемся
-            if returnLoop then returnLoop:Disconnect() end
-            returnLoop = nil
-            currentHRP = nil
-            print("✅ Граб закончился, возврат отключён")
+            if returnConnection then returnConnection:Disconnect() end
+            returnConnection = nil
         end
     end)
 end
 
--- ОТСЛЕЖИВАНИЕ ГРАБА
 local function setupAntiGrab()
     local char = LocalPlayer.Character
     if not char then return end
     
     local head = char:FindFirstChild("Head")
     local hrp = char:FindFirstChild("HumanoidRootPart")
-    
     if not head or not hrp then return end
     
-    -- Следим за появлением PartOwner
-    local conn
-    conn = head.ChildAdded:Connect(function(child)
+    if antiGrabConnections["PartOwner"] then
+        antiGrabConnections["PartOwner"]:Disconnect()
+    end
+    if antiGrabConnections["IsHeld"] then
+        antiGrabConnections["IsHeld"]:Disconnect()
+    end
+    
+    antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
         if child.Name == "PartOwner" and antiGrabActive then
-            print("⚠️ Граб обнаружен!")
             startReturn(hrp)
-            
-            -- Отправляем Struggle
             task.spawn(function()
                 while antiGrabActive and head and head:FindFirstChild("PartOwner") do
                     if Struggle then
@@ -186,9 +176,20 @@ local function setupAntiGrab()
         end
     end)
     
-    -- Сохраняем для отключения
-    if antiGrabConnections then
-        antiGrabConnections["PartOwner"] = conn
+    if isHeld then
+        antiGrabConnections["IsHeld"] = isHeld.Changed:Connect(function(held)
+            if held and antiGrabActive then
+                startReturn(hrp)
+                task.spawn(function()
+                    while antiGrabActive and isHeld and isHeld.Value do
+                        if Struggle then
+                            pcall(function() Struggle:FireServer(LocalPlayer) end)
+                        end
+                        task.wait(0.1)
+                    end
+                end)
+            end
+        end)
     end
 end
 
@@ -202,11 +203,10 @@ local function setAntiGrab(enabled)
     
     if enabled then
         setupAntiGrab()
-        if not antiGrabConnections then antiGrabConnections = {} end
         if not antiGrabConnections["CharacterAdded"] then
             antiGrabConnections["CharacterAdded"] = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
         end
-        print("✅ Анти Граб ВКЛЮЧЁН")
+        print("✅ Анти Граб ВКЛЮЧЁН (из FTAP)")
     else
         if antiGrabConnections then
             for _, conn in pairs(antiGrabConnections) do
@@ -214,9 +214,9 @@ local function setAntiGrab(enabled)
             end
             antiGrabConnections = {}
         end
-        if returnLoop then
-            returnLoop:Disconnect()
-            returnLoop = nil
+        if returnConnection then
+            returnConnection:Disconnect()
+            returnConnection = nil
         end
         print("✅ Анти Граб ВЫКЛЮЧЕН")
     end
@@ -248,4 +248,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб во вкладке Defense")
+print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб из FTAP во вкладке Defense")
