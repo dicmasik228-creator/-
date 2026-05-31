@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - ФИКС ВОЗВРАТА (без Anchored) ]]
+-- [[ BROKEN SPAWN MENU - Анти Граб (простой и рабочий) ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -100,52 +100,7 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== АНТИ КИК (РЕСЕТ) ==========
-local function setupAntiKickReset()
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    
-    local GameNotify = ReplicatedStorage:FindFirstChild("GameCorrectionEvents") and ReplicatedStorage.GameCorrectionEvents:FindFirstChild("GameCorrectionsNotify")
-    
-    if not GameNotify then return end
-    
-    GameNotify.OnClientEvent:Connect(function(message)
-        if not antiKickResetActive then return end
-        
-        local kickMessages = {
-            "вы летите невозможным образом",
-            "вы были кикнуты",
-            "flying",
-            "exploiting",
-            "anticheat",
-            "kick",
-            "летаете",
-            "невозможным образом",
-            "вылет",
-            "кикнут"
-        }
-        
-        local msgLower = string.lower(tostring(message))
-        for _, kickMsg in ipairs(kickMessages) do
-            if string.find(msgLower, kickMsg) then
-                local char = LocalPlayer.Character
-                if char then
-                    local hum = char:FindFirstChild("Humanoid")
-                    if hum then
-                        hum.Health = 0
-                        print("✅ Анти Кик: Ресет выполнен")
-                    end
-                end
-                break
-            end
-        end
-    end)
-end
-
-local antiKickResetActive = false
-
--- ========== АНТИ ГРАБ (ПРОСТОЙ ВОЗВРАТ, БЕЗ Anchored) ==========
+-- ========== АНТИ ГРАБ (ПРОСТОЙ РАБОЧИЙ) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -158,9 +113,9 @@ local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
 local antiGrabActive = false
 local savedCFrame = nil
-local returnConnection = nil
 local returnTask = nil
 local currentHead = nil
+local currentHRP = nil
 
 local PACKET_DELAY = 0.08
 
@@ -172,37 +127,34 @@ local function savePosition(hrp)
     end
 end
 
--- ЗАПУСК ВОЗВРАТА
-local function startReturn(hrp)
-    if not hrp then return end
+-- ГЛАВНЫЙ ЦИКЛ ВОЗВРАТА
+local function startReturn(hrp, head)
     if returnTask then return end
     
     savePosition(hrp)
     
-    -- Основной цикл возврата (каждые 0.001 секунды)
     returnTask = task.spawn(function()
+        print("🔄 Возврат запущен")
         while returnTask and antiGrabActive and hrp and hrp.Parent do
-            -- Проверяем, всё ещё в грабе?
-            local stillGrabbed = currentHead and currentHead:FindFirstChild("PartOwner")
-            local stillHeld = isHeld and isHeld.Value
+            -- Проверяем: всё ещё в грабе?
+            local isGrabbed = head and head:FindFirstChild("PartOwner")
+            local isHeldNow = isHeld and isHeld.Value
             
-            if stillGrabbed or stillHeld then
-                -- МГНОВЕННЫЙ ВОЗВРАТ НА МЕСТО
+            if isGrabbed or isHeldNow then
+                -- ВОЗВРАЩАЕМ НА МЕСТО
                 if savedCFrame then
                     hrp.CFrame = savedCFrame
                     hrp.Velocity = Vector3.zero
                     hrp.RotVelocity = Vector3.zero
-                    hrp.AssemblyLinearVelocity = Vector3.zero
-                    hrp.AssemblyAngularVelocity = Vector3.zero
                 end
-                task.wait(0.001)  -- каждую миллисекунду
+                task.wait(0.001) -- каждую миллисекунду
             else
-                -- Граба нет - выходим
+                -- Граб закончился - выходим
+                print("✅ Граб закончился, возврат остановлен")
                 break
             end
         end
         returnTask = nil
-        print("✅ Возврат остановлен")
     end)
 end
 
@@ -214,7 +166,7 @@ local function stopReturn()
 end
 
 -- БОРЬБА С ГРАБОМ
-local function struggleLoop(head)
+local function struggleLoop(head, hrp)
     if not antiGrabActive then return end
     
     local lastTime = 0
@@ -240,6 +192,7 @@ local function setupAntiGrab(character)
     if not head or not hrp then return end
     
     currentHead = head
+    currentHRP = hrp
     
     if antiGrabConnections then
         if antiGrabConnections["PartOwner"] then
@@ -255,9 +208,8 @@ local function setupAntiGrab(character)
     -- При захвате
     antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
         if child.Name == "PartOwner" and antiGrabActive then
-            savePosition(hrp)
-            startReturn(hrp)
-            task.spawn(struggleLoop, head)
+            startReturn(hrp, head)
+            task.spawn(struggleLoop, head, hrp)
         end
     end)
     
@@ -265,9 +217,8 @@ local function setupAntiGrab(character)
     if isHeld then
         antiGrabConnections["IsHeld"] = isHeld.Changed:Connect(function(held)
             if held and antiGrabActive then
-                savePosition(hrp)
-                startReturn(hrp)
-                task.spawn(struggleLoop, head)
+                startReturn(hrp, head)
+                task.spawn(struggleLoop, head, hrp)
             end
         end)
     end
@@ -300,7 +251,6 @@ local function setAntiGrab(enabled)
     end
 end
 
--- ========== КНОПКИ В ЗАЩИТУ ==========
 DefenseGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
@@ -308,21 +258,7 @@ DefenseGroup:AddToggle("AntiGrab", {
         setAntiGrab(Value)
     end
 })
-
-DefenseGroup:AddToggle("AntiKickReset", {
-    Text = "Анти Кик (Ресет)",
-    Default = false,
-    Callback = function(Value)
-        antiKickResetActive = Value
-        if Value then
-            setupAntiKickReset()
-            print("✅ Анти Кик (Ресет) ВКЛЮЧЁН")
-        else
-            print("✅ Анти Кик (Ресет) ВЫКЛЮЧЕН")
-        end
-    end
-})
--- ========== КОНЕЦ ЗАЩИТЫ ==========
+-- ========== КОНЕЦ АНТИ ГРАБ ==========
 
 -- НАСТРОЙКИ
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
@@ -341,4 +277,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | 3 Вид во вкладке Players | Защита во вкладке Defense")
+print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб во вкладке Defense")
