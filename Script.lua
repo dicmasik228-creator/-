@@ -269,11 +269,10 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА ==========
+-- ========== ЛАГ СЕРВЕРА (РАБОЧАЯ ВЕРСИЯ) ==========
 local lagActive = false
 local lagPower = 1000
 local lagConnection = nil
-local lagPacketSkip = 0
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
@@ -289,25 +288,42 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
     
-    local grabEvent = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("ExtendGrabLine")
-    if not grabEvent then
-        Library:Notify({Title = "Ошибка", Description = "GrabEvent не найден", Duration = 3})
+    local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+    if not grabEvents then
+        Library:Notify({Title = "Ошибка", Description = "GrabEvents не найден", Duration = 3})
         return
     end
+    
+    local createLine = grabEvents:FindFirstChild("CreateGrabLine")
+    local setOwner = grabEvents:FindFirstChild("SetNetworkOwner")
+    
+    if not createLine or not setOwner then
+        Library:Notify({Title = "Ошибка", Description = "События граба не найдены", Duration = 3})
+        return
+    end
+    
+    local players = game:GetService("Players")
+    local localPlayer = players.LocalPlayer
     
     lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if not lagActive then return end
         
-        lagPacketSkip = lagPacketSkip + 1
-        if lagPacketSkip % 5 == 0 then
-            local packetsPerFrame = math.floor(lagPower / 60)
-            if packetsPerFrame < 1 then packetsPerFrame = 1 end
-            if packetsPerFrame > 100 then packetsPerFrame = 100 end
-            
-            for i = 1, packetsPerFrame do
-                pcall(function()
-                    grabEvent:FireServer(string.rep("A", 500))
-                end)
+        local packetsPerFrame = math.floor(lagPower / 60)
+        if packetsPerFrame < 1 then packetsPerFrame = 1 end
+        if packetsPerFrame > 150 then packetsPerFrame = 150 end
+        
+        -- Спамим для всех игроков, кроме себя
+        for _, plr in ipairs(players:GetPlayers()) do
+            if plr ~= localPlayer and plr.Character then
+                local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    for i = 1, packetsPerFrame do
+                        pcall(function()
+                            createLine:FireServer(hrp, hrp.CFrame)
+                            setOwner:FireServer(hrp, hrp.CFrame)
+                        end)
+                    end
+                end
             end
         end
     end)
