@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с Анти Граб (заморозка на месте, без падения) ]]
+-- [[ BROKEN SPAWN MENU - с Анти Граб (пакеты 0.06 сек) ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -22,7 +22,6 @@ local Tabs = {
     Settings = Window:AddTab("Settings", "settings"),
 }
 
--- Пустые группы
 local function addEmptyGroup(tab, name)
     local group = tab:AddLeftGroupbox(name)
     group:AddLabel(" ")
@@ -33,7 +32,7 @@ addEmptyGroup(Tabs.Target, "Target")
 addEmptyGroup(Tabs.TargetBlob, "Target Blob")
 addEmptyGroup(Tabs.Smile, "Smile")
 
--- ========== АНТИ ГРАБ (ЗАМОРОЗКА НА МЕСТЕ) ==========
+-- ========== АНТИ ГРАБ ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -46,33 +45,51 @@ local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
 local antiGrabActive = false
 local antiGrabConnections = {}
-local PACKET_DELAY = 0.1
+local PACKET_DELAY = 0.06  -- 0.06 секунд
 local freezeConnection = nil
 local savedCFrame = nil
 
-local function freezeCharacter(hrp)
+local function freezeCharacter(character, hrp)
     if not hrp then return end
     savedCFrame = hrp.CFrame
     hrp.Anchored = true
+    hrp.Velocity = Vector3.zero
+    hrp.RotVelocity = Vector3.zero
     
     local bp = hrp:FindFirstChild("AntiGrabBP")
     if not bp then
         bp = Instance.new("BodyPosition")
         bp.Name = "AntiGrabBP"
         bp.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        bp.D = 500
-        bp.P = 20000
+        bp.D = 1000
+        bp.P = 50000
         bp.Parent = hrp
     end
     bp.Position = savedCFrame.Position
     
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") and part ~= hrp then
+            part.Anchored = true
+            part.Velocity = Vector3.zero
+            part.RotVelocity = Vector3.zero
+        end
+    end
+    
     if freezeConnection then freezeConnection:Disconnect() end
     freezeConnection = RunService.Heartbeat:Connect(function()
         if antiGrabActive and hrp and hrp.Parent then
-            hrp.CFrame = savedCFrame
+            if (hrp.Position - savedCFrame.Position).Magnitude > 0.5 then
+                hrp.CFrame = savedCFrame
+            end
             hrp.Velocity = Vector3.zero
             hrp.RotVelocity = Vector3.zero
             if bp then bp.Position = savedCFrame.Position end
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Velocity = Vector3.zero
+                    part.RotVelocity = Vector3.zero
+                end
+            end
         else
             if freezeConnection then freezeConnection:Disconnect() end
             freezeConnection = nil
@@ -80,7 +97,7 @@ local function freezeCharacter(hrp)
     end)
 end
 
-local function unfreezeCharacter(hrp)
+local function unfreezeCharacter(character, hrp)
     if freezeConnection then
         freezeConnection:Disconnect()
         freezeConnection = nil
@@ -89,6 +106,13 @@ local function unfreezeCharacter(hrp)
         hrp.Anchored = false
         local bp = hrp:FindFirstChild("AntiGrabBP")
         if bp then bp:Destroy() end
+    end
+    if character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part ~= hrp then
+                part.Anchored = false
+            end
+        end
     end
 end
 
@@ -109,7 +133,7 @@ local function setupAntiGrab(character)
     
     antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
         if child.Name == "PartOwner" and antiGrabActive then
-            freezeCharacter(hrp)
+            freezeCharacter(character, hrp)
             task.spawn(function()
                 local lastPacketTime = 0
                 while antiGrabActive and head:FindFirstChild("PartOwner") do
@@ -119,9 +143,9 @@ local function setupAntiGrab(character)
                             pcall(function() Struggle:FireServer(LocalPlayer) end)
                         end
                     end
-                    task.wait(0.1)
+                    task.wait(0.05)
                 end
-                unfreezeCharacter(hrp)
+                unfreezeCharacter(character, hrp)
             end)
         end
     end)
@@ -129,7 +153,7 @@ local function setupAntiGrab(character)
     if isHeld then
         antiGrabConnections["IsHeld"] = isHeld.Changed:Connect(function(held)
             if held and antiGrabActive then
-                freezeCharacter(hrp)
+                freezeCharacter(character, hrp)
                 task.spawn(function()
                     local lastPacketTime = 0
                     while antiGrabActive and isHeld and isHeld.Value do
@@ -139,9 +163,9 @@ local function setupAntiGrab(character)
                                 pcall(function() Struggle:FireServer(LocalPlayer) end)
                             end
                         end
-                        task.wait(0.1)
+                        task.wait(0.05)
                     end
-                    unfreezeCharacter(hrp)
+                    unfreezeCharacter(character, hrp)
                 end)
             end
         end)
@@ -169,7 +193,7 @@ local function setAntiGrab(enabled)
         local char = LocalPlayer.Character
         if char then
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            unfreezeCharacter(hrp)
+            unfreezeCharacter(char, hrp)
         end
     end
 end
@@ -200,4 +224,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Анти Граб во вкладке Defense (заморозка на месте)")
+print("✅ Меню загружено | Анти Граб во вкладке Defense (пакеты 0.06 сек)")
