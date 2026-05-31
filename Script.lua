@@ -269,7 +269,7 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (ЛИНИЯМИ В РУКЕ) ==========
+-- ========== ЛАГ СЕРВЕРА ==========
 local lagActive = false
 local lagPower = 1000
 local lagConnection = nil
@@ -287,7 +287,7 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 })
 
 local function createHandlePart()
-    local char = LocalPlayer.Character
+    local char = game.Players.LocalPlayer.Character
     if not char then return nil end
     local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("UpperTorso")
     if not rightArm then return nil end
@@ -429,4 +429,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Ускорение | Сила прыжка | Бесконечный прыжок | Noclip | Анти Граб | Анти Лаг | Лаг сервера")
+print("✅ Меню загружено")
