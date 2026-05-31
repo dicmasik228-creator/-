@@ -269,11 +269,11 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА ==========
+-- ========== ЛАГ СЕРВЕРА (ЛАГАЮТ ДРУГИЕ) ==========
 local lagActive = false
 local lagPower = 1000
 local lagConnection = nil
-local lagHandlePart = nil
+local lagPacketSkip = 0
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
@@ -286,26 +286,6 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
     end
 })
 
-local function createHandlePart()
-    local char = game.Players.LocalPlayer.Character
-    if not char then return nil end
-    local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("UpperTorso")
-    if not rightArm then return nil end
-    local handle = Instance.new("Part")
-    handle.Name = "LagHandle"
-    handle.Size = Vector3.new(0.5, 0.5, 0.5)
-    handle.Transparency = 1
-    handle.CanCollide = false
-    handle.Anchored = false
-    handle.Parent = rightArm
-    handle.CFrame = rightArm.CFrame * CFrame.new(0, -0.5, 0)
-    local weld = Instance.new("WeldConstraint")
-    weld.Part0 = rightArm
-    weld.Part1 = handle
-    weld.Parent = handle
-    return handle
-end
-
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
     
@@ -316,61 +296,52 @@ local function startLag()
     end
     
     local createLine = grabEvents:FindFirstChild("CreateGrabLine")
-    if not createLine then
-        Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
-        return
-    end
+    local setOwner = grabEvents:FindFirstChild("SetNetworkOwner")
     
-    lagHandlePart = createHandlePart()
-    if not lagHandlePart then
-        Library:Notify({Title = "Ошибка", Description = "Не удалось создать часть в руке", Duration = 3})
+    if not createLine or not setOwner then
+        Library:Notify({Title = "Ошибка", Description = "События граба не найдены", Duration = 3})
         return
     end
     
     local players = game:GetService("Players")
     local localPlayer = players.LocalPlayer
-    local targets = {}
     
-    for _, plr in ipairs(players:GetPlayers()) do
-        if plr ~= localPlayer and plr.Character then
-            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                table.insert(targets, {player = plr, hrp = hrp})
-            end
-        end
-    end
-    
-    if #targets == 0 then
-        Library:Notify({Title = "Ошибка", Description = "Нет целей для лага", Duration = 3})
-        return
-    end
+    -- Отключаем рендер линий для себя (чтобы не лагать)
+    local oldCreate = createLine.OnClientEvent
+    createLine.OnClientEvent = function() end
     
     lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if not lagActive then return end
-        local packetsPerFrame = math.floor(lagPower / 60)
-        if packetsPerFrame < 1 then packetsPerFrame = 1 end
-        if packetsPerFrame > 150 then packetsPerFrame = 150 end
         
-        for _, target in ipairs(targets) do
-            for i = 1, packetsPerFrame do
-                pcall(function()
-                    createLine:FireServer(lagHandlePart, target.hrp.Position)
-                end)
+        lagPacketSkip = lagPacketSkip + 1
+        if lagPacketSkip % 2 == 0 then
+            local packetsPerFrame = math.floor(lagPower / 60)
+            if packetsPerFrame < 1 then packetsPerFrame = 1 end
+            if packetsPerFrame > 100 then packetsPerFrame = 100 end
+            
+            for _, plr in ipairs(players:GetPlayers()) do
+                if plr ~= localPlayer and plr.Character then
+                    local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        for i = 1, packetsPerFrame do
+                            pcall(function()
+                                createLine:FireServer(hrp, hrp.CFrame)
+                                setOwner:FireServer(hrp, hrp.CFrame)
+                            end)
+                        end
+                    end
+                end
             end
         end
     end)
     
-    Library:Notify({Title = "Лаг сервера", Description = "Включён (" .. lagPower .. " линий/сек)", Duration = 3})
+    Library:Notify({Title = "Лаг сервера", Description = "Включён (" .. lagPower .. " пакетов/сек)", Duration = 3})
 end
 
 local function stopLag()
     if lagConnection then
         lagConnection:Disconnect()
         lagConnection = nil
-    end
-    if lagHandlePart then
-        pcall(function() lagHandlePart:Destroy() end)
-        lagHandlePart = nil
     end
     Library:Notify({Title = "Лаг сервера", Description = "Выключен", Duration = 2})
 end
