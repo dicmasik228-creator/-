@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с Анти Грабом (пакеты 0.08 сек) ]]
+-- [[ BROKEN SPAWN MENU - с Анти Грабом и 3 Видом ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -27,12 +27,86 @@ local function addEmptyGroup(tab, name)
     group:AddLabel(" ")
 end
 
-addEmptyGroup(Tabs.Players, "Players")
 addEmptyGroup(Tabs.Target, "Target")
 addEmptyGroup(Tabs.TargetBlob, "Target Blob")
 addEmptyGroup(Tabs.Smile, "Smile")
 
--- ========== АНТИ ГРАБ (пакеты 0.08 сек) ==========
+-- ========== 3 ВИД (НЕ СЛЕТАЕТ) ==========
+local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки")
+
+local thirdPersonActive = false
+local originalCameraMode = nil
+local originalZoomDistance = nil
+
+local function enableThirdPerson()
+    local player = game.Players.LocalPlayer
+    if not player then return end
+    
+    -- Сохраняем оригинальные настройки
+    originalCameraMode = player.CameraMode
+    originalZoomDistance = player.CameraMaxZoomDistance
+    
+    -- Включаем 3 вид
+    player.CameraMode = Enum.CameraMode.Classic
+    player.CameraMaxZoomDistance = 50
+    player.CameraMinZoomDistance = 0.5
+    
+    -- Блокируем сброс вида при смерти
+    local function onCharacterAdded()
+        task.wait(0.1)
+        if thirdPersonActive then
+            player.CameraMode = Enum.CameraMode.Classic
+            player.CameraMaxZoomDistance = 50
+            player.CameraMinZoomDistance = 0.5
+        end
+    end
+    
+    -- Подключаем событие
+    if not PlayersGroup._charConn then
+        PlayersGroup._charConn = player.CharacterAdded:Connect(onCharacterAdded)
+    end
+end
+
+local function disableThirdPerson()
+    local player = game.Players.LocalPlayer
+    if not player then return end
+    
+    -- Возвращаем оригинальные настройки
+    if originalCameraMode then
+        player.CameraMode = originalCameraMode
+    else
+        player.CameraMode = Enum.CameraMode.LockFirstPerson
+    end
+    
+    if originalZoomDistance then
+        player.CameraMaxZoomDistance = originalZoomDistance
+    else
+        player.CameraMaxZoomDistance = 0.5
+    end
+    player.CameraMinZoomDistance = 0.5
+    
+    -- Отключаем событие
+    if PlayersGroup._charConn then
+        PlayersGroup._charConn:Disconnect()
+        PlayersGroup._charConn = nil
+    end
+end
+
+PlayersGroup:AddToggle("ThirdPerson", {
+    Text = "3 Вид",
+    Default = false,
+    Callback = function(Value)
+        thirdPersonActive = Value
+        if Value then
+            enableThirdPerson()
+        else
+            disableThirdPerson()
+        end
+    end
+})
+-- ========== КОНЕЦ 3 ВИД ==========
+
+-- ========== МАКСИМАЛЬНО БЫСТРЫЙ АНТИ ГРАБ ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -50,9 +124,20 @@ local savedPosition = nil
 local savedCFrame = nil
 local freezeConnection = nil
 local originalWalkSpeed = nil
+local originalJumpPower = nil
 local lastPacketTime = 0
 
-local PACKET_DELAY = 0.08  -- ПАКЕТЫ КАЖДЫЕ 0.08 СЕКУНД
+local PACKET_DELAY = 0.08
+
+local function preProtect(hrp)
+    if not antiGrabActive then return end
+    if hrp and hrp.Parent then
+        hrp.Velocity = Vector3.zero
+        hrp.RotVelocity = Vector3.zero
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+    end
+end
 
 local function fullFreeze(character, hrp, hum)
     if not hrp or not hum then return end
@@ -62,6 +147,7 @@ local function fullFreeze(character, hrp, hum)
     savedPosition = hrp.Position
     savedCFrame = hrp.CFrame
     originalWalkSpeed = hum.WalkSpeed
+    originalJumpPower = hum.JumpPower
     
     hrp.Anchored = true
     hrp.Velocity = Vector3.zero
@@ -83,14 +169,15 @@ local function fullFreeze(character, hrp, hum)
     hum.JumpPower = 0
     hum.PlatformStand = true
     hum.AutoRotate = false
+    hum.Sit = false
     
     local bp = hrp:FindFirstChild("AntiGrabBP")
     if bp then bp:Destroy() end
     bp = Instance.new("BodyPosition")
     bp.Name = "AntiGrabBP"
     bp.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bp.D = 5000
-    bp.P = 200000
+    bp.D = 10000
+    bp.P = 500000
     bp.Position = savedPosition
     bp.Parent = hrp
     
@@ -99,9 +186,17 @@ local function fullFreeze(character, hrp, hum)
     bg = Instance.new("BodyGyro")
     bg.Name = "AntiGrabBG"
     bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bg.P = 200000
+    bg.P = 500000
     bg.CFrame = savedCFrame
     bg.Parent = hrp
+    
+    local bv = hrp:FindFirstChild("AntiGrabBV")
+    if bv then bv:Destroy() end
+    bv = Instance.new("BodyVelocity")
+    bv.Name = "AntiGrabBV"
+    bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bv.Velocity = Vector3.zero
+    bv.Parent = hrp
     
     if freezeConnection then freezeConnection:Disconnect() end
     freezeConnection = RunService.Heartbeat:Connect(function()
@@ -112,13 +207,14 @@ local function fullFreeze(character, hrp, hum)
         end
         
         if hrp and hrp.Parent and hum and hum.Parent then
-            local dist = (hrp.Position - savedPosition).Magnitude
-            if dist > 0.05 then
+            if (hrp.Position - savedPosition).Magnitude > 0.001 then
                 hrp.CFrame = savedCFrame
-                hrp.Velocity = Vector3.zero
-                hrp.AssemblyLinearVelocity = Vector3.zero
-                if bp then bp.Position = savedPosition end
             end
+            
+            hrp.Velocity = Vector3.zero
+            hrp.RotVelocity = Vector3.zero
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
             
             for _, part in pairs(character:GetDescendants()) do
                 if part:IsA("BasePart") then
@@ -131,6 +227,8 @@ local function fullFreeze(character, hrp, hum)
             
             if bp then bp.Position = savedPosition end
             if bg then bg.CFrame = savedCFrame end
+            if bv then bv.Velocity = Vector3.zero end
+            
             if hum.Sit then hum.Sit = false end
             hum.PlatformStand = true
         end
@@ -151,10 +249,14 @@ local function fullUnfreeze(character, hrp, hum)
         if bp then bp:Destroy() end
         local bg = hrp:FindFirstChild("AntiGrabBG")
         if bg then bg:Destroy() end
+        local bv = hrp:FindFirstChild("AntiGrabBV")
+        if bv then bv:Destroy() end
+        
         hrp.Velocity = Vector3.zero
         hrp.RotVelocity = Vector3.zero
         hrp.AssemblyLinearVelocity = Vector3.zero
         hrp.AssemblyAngularVelocity = Vector3.zero
+        
         if savedCFrame then
             hrp.CFrame = savedCFrame
         end
@@ -174,7 +276,7 @@ local function fullUnfreeze(character, hrp, hum)
     
     if hum then
         hum.WalkSpeed = originalWalkSpeed or 16
-        hum.JumpPower = 50
+        hum.JumpPower = originalJumpPower or 50
         hum.PlatformStand = false
         hum.AutoRotate = true
         hum.Sit = false
@@ -199,9 +301,12 @@ local function struggleLoop(head, hrp, character, hum)
             hrp.RotVelocity = Vector3.zero
             hrp.AssemblyLinearVelocity = Vector3.zero
             hrp.AssemblyAngularVelocity = Vector3.zero
+            if (hrp.Position - savedPosition).Magnitude > 0.001 then
+                hrp.CFrame = savedCFrame
+            end
         end
         
-        task.wait(0.02)
+        task.wait(0.005)
     end
     
     fullUnfreeze(character, hrp, hum)
@@ -224,10 +329,16 @@ local function setupAntiGrab(character)
         antiGrabConnections["IsHeld"]:Disconnect()
         antiGrabConnections["IsHeld"] = nil
     end
-    if antiGrabConnections["CharacterAdded"] then
-        antiGrabConnections["CharacterAdded"]:Disconnect()
-        antiGrabConnections["CharacterAdded"] = nil
+    if antiGrabConnections["Heartbeat"] then
+        antiGrabConnections["Heartbeat"]:Disconnect()
+        antiGrabConnections["Heartbeat"] = nil
     end
+    
+    antiGrabConnections["Heartbeat"] = RunService.Heartbeat:Connect(function()
+        if antiGrabActive and not isGrabbed and hrp and hrp.Parent then
+            preProtect(hrp)
+        end
+    end)
     
     antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
         if child.Name == "PartOwner" and antiGrabActive and not isGrabbed then
@@ -247,7 +358,7 @@ local function setupAntiGrab(character)
 end
 
 local function onCharacterAdded(character)
-    task.wait(0.5)
+    task.wait(0.3)
     setupAntiGrab(character)
 end
 
@@ -260,7 +371,7 @@ local function setAntiGrab(enabled)
         if not antiGrabConnections["CharacterAdded"] then
             antiGrabConnections["CharacterAdded"] = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
         end
-        print("✅ Анти Граб ВКЛЮЧЁН (пакеты 0.08 сек)")
+        print("✅ Анти Граб ВКЛЮЧЁН")
     else
         for _, conn in pairs(antiGrabConnections) do
             pcall(function() conn:Disconnect() end)
@@ -277,7 +388,6 @@ local function setAntiGrab(enabled)
     end
 end
 
--- КНОПКА В МЕНЮ
 DefenseGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
@@ -304,4 +414,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Анти Граб (пакеты 0.08 сек) во вкладке Defense")
+print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб во вкладке Defense")
