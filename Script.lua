@@ -95,6 +95,41 @@ PlayersGroup:AddToggle("ThirdPerson", {
     end
 })
 
+local walkSpeedSlider = PlayersGroup:AddSlider("WalkSpeed", {
+    Text = "Увеличить скорость",
+    Default = 16,
+    Min = 0,
+    Max = 10000,
+    Rounding = 0,
+    Callback = function(Value) end
+})
+
+local function applyWalkSpeed()
+    local char = game.Players.LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        local speed = walkSpeedSlider.Value
+        char.Humanoid.WalkSpeed = speed
+        Library:Notify({
+            Title = "BROKEN SPAWN",
+            Description = "Скорость установлена: " .. speed,
+            Duration = 2
+        })
+    else
+        Library:Notify({
+            Title = "BROKEN SPAWN",
+            Description = "Персонаж не найден",
+            Duration = 2
+        })
+    end
+end
+
+PlayersGroup:AddButton({
+    Text = "Применить скорость",
+    Func = function()
+        applyWalkSpeed()
+    end
+})
+
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
