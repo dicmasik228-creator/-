@@ -1,5 +1,4 @@
--- [[ BROKEN SPAWN MENU - Mobile ]] --
--- Картинка: https://create.roblox.com/store/asset/112281889314647/Broken-spawn
+-- [[ RESONANCE STYLE MENU - MEHKO МЕРУЛЕК ]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -7,7 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BrokenSpawn"
+ScreenGui.Name = "ResonanceMenu"
 ScreenGui.ResetOnSpawn = false
 
 if gethui then
@@ -16,23 +15,45 @@ else
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 end
 
--- ОСНОВНАЯ ПАНЕЛЬ
+-- ПЛАВАЮЩАЯ КНОПКА
+local FloatButton = Instance.new("TextButton")
+FloatButton.Size = UDim2.new(0, 60, 0, 60)
+FloatButton.Position = UDim2.new(0.85, 0, 0.85, 0)
+FloatButton.BackgroundColor3 = Color3.fromRGB(80, 150, 255)
+FloatButton.Text = "⚡"
+FloatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+FloatButton.TextSize = 30
+FloatButton.Font = Enum.Font.GothamBold
+FloatButton.BorderSizePixel = 0
+FloatButton.Parent = ScreenGui
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(1, 0)
+ButtonCorner.Parent = FloatButton
+
+-- ОСНОВНОЕ МЕНЮ
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 340, 0, 480)
-MainFrame.Position = UDim2.new(0.5, -170, 0.5, -240)
+MainFrame.Size = UDim2.new(0, 300, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -210)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 28)
-MainFrame.BackgroundTransparency = 0.15
+MainFrame.BackgroundTransparency = 0.1
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = false
 MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
-MainCorner.CornerRadius = UDim.new(0, 22)
+MainCorner.CornerRadius = UDim.new(0, 20)
 MainCorner.Parent = MainFrame
 
--- ВЕРХНЯЯ ПАНЕЛЬ
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(60, 60, 90)
+MainStroke.Thickness = 1.5
+MainStroke.Transparency = 0.5
+MainStroke.Parent = MainFrame
+
+-- ВЕРХНЯЯ ПАНЕЛЬ (ЗАГОЛОВОК)
 local TopBar = Instance.new("Frame")
-TopBar.Size = UDim2.new(1, 0, 0, 110)
+TopBar.Size = UDim2.new(1, 0, 0, 80)
 TopBar.Position = UDim2.new(0, 0, 0, 0)
 TopBar.BackgroundColor3 = Color3.fromRGB(25, 25, 38)
 TopBar.BackgroundTransparency = 0.2
@@ -40,101 +61,97 @@ TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
 local TopCorner = Instance.new("UICorner")
-TopCorner.CornerRadius = UDim.new(0, 22)
+TopCorner.CornerRadius = UDim.new(0, 20)
 TopCorner.Parent = TopBar
 
--- КАРТИНКА (ТВОЯ)
-local Icon = Instance.new("ImageLabel")
-Icon.Size = UDim2.new(0, 55, 0, 55)
-Icon.Position = UDim2.new(0.5, -27, 0, 12)
-Icon.BackgroundTransparency = 1
-Icon.Image = "rbxassetid://112281889314647"
-Icon.Parent = TopBar
+-- Заголовок "MEHKO" и "МЕРУЛЕК" (две строки)
+local Title1 = Instance.new("TextLabel")
+Title1.Size = UDim2.new(1, 0, 0, 35)
+Title1.Position = UDim2.new(0, 0, 0, 15)
+Title1.BackgroundTransparency = 1
+Title1.Text = "MEHKO"
+Title1.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title1.TextSize = 24
+Title1.Font = Enum.Font.GothamBold
+Title1.TextXAlignment = Enum.TextXAlignment.Center
+Title1.Parent = TopBar
 
--- НАЗВАНИЕ
-local MenuTitle = Instance.new("TextLabel")
-MenuTitle.Size = UDim2.new(1, 0, 0, 30)
-MenuTitle.Position = UDim2.new(0, 0, 0, 72)
-MenuTitle.BackgroundTransparency = 1
-MenuTitle.Text = "BROKEN SPAWN"
-MenuTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-MenuTitle.TextSize = 18
-MenuTitle.Font = Enum.Font.GothamBold
-MenuTitle.TextXAlignment = Enum.TextXAlignment.Center
-MenuTitle.Parent = TopBar
+local Title2 = Instance.new("TextLabel")
+Title2.Size = UDim2.new(1, 0, 0, 25)
+Title2.Position = UDim2.new(0, 0, 0, 50)
+Title2.BackgroundTransparency = 1
+Title2.Text = "МЕРУЛЕК"
+Title2.TextColor3 = Color3.fromRGB(180, 180, 220)
+Title2.TextSize = 16
+Title2.Font = Enum.Font.GothamRegular
+Title2.TextXAlignment = Enum.TextXAlignment.Center
+Title2.Parent = TopBar
 
--- СТРОКА ПОИСКА
-local SearchFrame = Instance.new("Frame")
-SearchFrame.Size = UDim2.new(0.9, 0, 0, 38)
-SearchFrame.Position = UDim2.new(0.05, 0, 0.245, 0)
-SearchFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-SearchFrame.BackgroundTransparency = 0.6
-SearchFrame.BorderSizePixel = 0
-SearchFrame.Parent = MainFrame
+-- КНОПКА ЗАКРЫТЬ
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -40, 0, 8)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextSize = 16
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Parent = TopBar
 
-local SearchCorner = Instance.new("UICorner")
-SearchCorner.CornerRadius = UDim.new(0, 12)
-SearchCorner.Parent = SearchFrame
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(1, 0)
+CloseCorner.Parent = CloseBtn
 
-local SearchIcon = Instance.new("TextLabel")
-SearchIcon.Size = UDim2.new(0, 35, 1, 0)
-SearchIcon.Position = UDim2.new(0, 10, 0, 0)
-SearchIcon.BackgroundTransparency = 1
-SearchIcon.Text = "🔍"
-SearchIcon.TextColor3 = Color3.fromRGB(150, 150, 180)
-SearchIcon.TextSize = 18
-SearchIcon.Font = Enum.Font.GothamRegular
-SearchIcon.Parent = SearchFrame
-
-local SearchText = Instance.new("TextLabel")
-SearchText.Size = UDim2.new(1, -50, 1, 0)
-SearchText.Position = UDim2.new(0, 45, 0, 0)
-SearchText.BackgroundTransparency = 1
-SearchText.Text = "Search"
-SearchText.TextColor3 = Color3.fromRGB(120, 120, 150)
-SearchText.TextSize = 16
-SearchText.Font = Enum.Font.GothamRegular
-SearchText.TextXAlignment = Enum.TextXAlignment.Left
-SearchText.Parent = SearchFrame
-
--- СКРОЛЛ
+-- СПИСОК ВКЛАДОК
 local Scroll = Instance.new("ScrollingFrame")
-Scroll.Size = UDim2.new(1, 0, 1, -200)
-Scroll.Position = UDim2.new(0, 0, 0, 200)
+Scroll.Size = UDim2.new(1, 0, 1, -130)
+Scroll.Position = UDim2.new(0, 0, 0, 85)
 Scroll.BackgroundTransparency = 1
-Scroll.ScrollBarThickness = 4
+Scroll.ScrollBarThickness = 3
 Scroll.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
 Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 Scroll.Parent = MainFrame
 
-local ScrollLayout = Instance.new("UIListLayout")
-ScrollLayout.Padding = UDim.new(0, 10)
-ScrollLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-ScrollLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ScrollLayout.Parent = Scroll
+local Layout = Instance.new("UIListLayout")
+Layout.Padding = UDim.new(0, 8)
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Layout.SortOrder = Enum.SortOrder.LayoutOrder
+Layout.Parent = Scroll
 
--- ВКЛАДКИ
+-- ВКЛАДКИ (как на скриншоте)
 local tabs = {"Visual", "Auto-Clicker", "Keybinds", "Misc", "Lists", "Settings"}
 
 for _, name in ipairs(tabs) do
     local TabBtn = Instance.new("TextButton")
-    TabBtn.Size = UDim2.new(0.85, 0, 0, 50)
-    TabBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
-    TabBtn.BackgroundTransparency = 0.5
+    TabBtn.Size = UDim2.new(0.85, 0, 0, 48)
+    TabBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    TabBtn.BackgroundTransparency = 0.4
     TabBtn.Text = "   " .. name
     TabBtn.TextColor3 = Color3.fromRGB(220, 220, 255)
-    TabBtn.TextSize = 17
+    TabBtn.TextSize = 16
     TabBtn.Font = Enum.Font.GothamSemibold
     TabBtn.TextXAlignment = Enum.TextXAlignment.Left
     TabBtn.BorderSizePixel = 0
     TabBtn.Parent = Scroll
     
     local TabCorner = Instance.new("UICorner")
-    TabCorner.CornerRadius = UDim.new(0, 14)
+    TabCorner.CornerRadius = UDim.new(0, 12)
     TabCorner.Parent = TabBtn
+    
+    -- Подсветка при нажатии
+    TabBtn.TouchTap:Connect(function()
+        for _, btn in pairs(Scroll:GetChildren()) do
+            if btn:IsA("TextButton") then
+                btn.BackgroundTransparency = 0.4
+            end
+        end
+        TabBtn.BackgroundTransparency = 0.1
+        print("Выбрано: " .. name)
+    end)
 end
 
--- НИЖНЯЯ ПАНЕЛЬ (FPS и Toggle)
+-- НИЖНЯЯ ПАНЕЛЬ (цифра 9160 как на скрине)
 local BottomBar = Instance.new("Frame")
 BottomBar.Size = UDim2.new(1, 0, 0, 45)
 BottomBar.Position = UDim2.new(0, 0, 1, -45)
@@ -144,66 +161,23 @@ BottomBar.BorderSizePixel = 0
 BottomBar.Parent = MainFrame
 
 local BottomCorner = Instance.new("UICorner")
-BottomCorner.CornerRadius = UDim.new(0, 22)
+BottomCorner.CornerRadius = UDim.new(0, 20)
 BottomCorner.Parent = BottomBar
 
-local FPSLabel = Instance.new("TextLabel")
-FPSLabel.Size = UDim2.new(0.5, 0, 1, 0)
-FPSLabel.Position = UDim2.new(0, 15, 0, 0)
-FPSLabel.BackgroundTransparency = 1
-FPSLabel.Text = "56 fps | 113 ms"
-FPSLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
-FPSLabel.TextSize = 13
-FPSLabel.Font = Enum.Font.GothamRegular
-FPSLabel.TextXAlignment = Enum.TextXAlignment.Left
-FPSLabel.Parent = BottomBar
+local BottomNumber = Instance.new("TextLabel")
+BottomNumber.Size = UDim2.new(1, 0, 1, 0)
+BottomNumber.BackgroundTransparency = 1
+BottomNumber.Text = "9160"
+BottomNumber.TextColor3 = Color3.fromRGB(180, 180, 200)
+BottomNumber.TextSize = 18
+BottomNumber.Font = Enum.Font.GothamBold
+BottomNumber.TextXAlignment = Enum.TextXAlignment.Center
+BottomNumber.Parent = BottomBar
 
-local ToggleLabel = Instance.new("TextLabel")
-ToggleLabel.Size = UDim2.new(0.3, 0, 1, 0)
-ToggleLabel.Position = UDim2.new(0.5, -35, 0, 0)
-ToggleLabel.BackgroundTransparency = 1
-ToggleLabel.Text = "Toggle"
-ToggleLabel.TextColor3 = Color3.fromRGB(80, 180, 200)
-ToggleLabel.TextSize = 14
-ToggleLabel.Font = Enum.Font.GothamBold
-ToggleLabel.Parent = BottomBar
-
--- КНОПКА ЗАКРЫТЬ ВНУТРИ МЕНЮ
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 35, 0, 35)
-CloseBtn.Position = UDim2.new(1, -45, 0, 8)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 18
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.BorderSizePixel = 0
-CloseBtn.Parent = TopBar
-
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(1, 0)
-CloseCorner.Parent = CloseBtn
-
--- ПЛАВАЮЩАЯ КНОПКА ОТКРЫТИЯ
-local FloatButton = Instance.new("TextButton")
-FloatButton.Size = UDim2.new(0, 65, 0, 65)
-FloatButton.Position = UDim2.new(0.8, 0, 0.8, 0)
-FloatButton.BackgroundColor3 = Color3.fromRGB(80, 150, 255)
-FloatButton.Text = "⚡"
-FloatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatButton.TextSize = 32
-FloatButton.Font = Enum.Font.GothamBold
-FloatButton.BorderSizePixel = 0
-FloatButton.Parent = ScreenGui
-
-local ButtonCorner = Instance.new("UICorner")
-ButtonCorner.CornerRadius = UDim.new(1, 0)
-ButtonCorner.Parent = FloatButton
-
--- ЛОГИКА
+-- ЛОГИКА ОТКРЫТИЯ
 local menuOpen = false
 
-FloatButton.MouseButton1Click:Connect(function()
+FloatButton.TouchTap:Connect(function()
     if menuOpen then
         menuOpen = false
         MainFrame.Visible = false
@@ -213,40 +187,38 @@ FloatButton.MouseButton1Click:Connect(function()
     end
 end)
 
-CloseBtn.MouseButton1Click:Connect(function()
+CloseBtn.TouchTap:Connect(function()
     menuOpen = false
     MainFrame.Visible = false
 end)
 
--- ПЕРЕТАСКИВАНИЕ МЕНЮ
-local dragging = false
+-- ПЕРЕТАСКИВАНИЕ
+local dragActive = false
 local dragStart
-local menuStart
+local frameStart
 
-TopBar.MouseButton1Down:Connect(function()
-    dragging = true
-    dragStart = UserInputService:GetMouseLocation()
-    menuStart = MainFrame.Position
+TopBar.TouchBegan:Connect(function(input)
+    dragActive = true
+    dragStart = input.Position
+    frameStart = MainFrame.Position
 end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
+TopBar.TouchMoved:Connect(function(input)
+    if dragActive then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(frameStart.X.Scale, frameStart.X.Offset + delta.X, frameStart.Y.Scale, frameStart.Y.Offset + delta.Y)
     end
 end)
 
-game:GetService("RunService").RenderStepped:Connect(function()
-    if dragging then
-        local delta = UserInputService:GetMouseLocation() - dragStart
-        MainFrame.Position = UDim2.new(menuStart.X.Scale, menuStart.X.Offset + delta.X, menuStart.Y.Scale, menuStart.Y.Offset + delta.Y)
-    end
+TopBar.TouchEnded:Connect(function()
+    dragActive = false
 end)
 
--- АНИМАЦИЯ
+-- АНИМАЦИЯ ПОЯВЛЕНИЯ КНОПКИ
 FloatButton.BackgroundTransparency = 1
 FloatButton.Size = UDim2.new(0, 0, 0, 0)
 task.wait(0.05)
-FloatButton:TweenSize(UDim2.new(0, 65, 0, 65), "Out", "Quad", 0.3)
+FloatButton:TweenSize(UDim2.new(0, 60, 0, 60), "Out", "Quad", 0.3)
 FloatButton.BackgroundTransparency = 0
 
-print("✅ Broken Spawn Menu | Картинка загружена, нажми ⚡")
+print("✅ Resonance Menu | MEHKO МЕРУЛЕК | Нажми ⚡")
