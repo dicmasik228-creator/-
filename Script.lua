@@ -269,11 +269,10 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (ЛАГАЮТ ДРУГИЕ) ==========
+-- ========== ЛАГ СЕРВЕРА ==========
 local lagActive = false
 local lagPower = 1000
 local lagConnection = nil
-local lagPacketSkip = 0
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
@@ -289,53 +288,27 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
     
-    local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
-    if not grabEvents then
-        Library:Notify({Title = "Ошибка", Description = "GrabEvents не найден", Duration = 3})
+    local stopVelocity = ReplicatedStorage:FindFirstChild("GameCorrectionEvents") and ReplicatedStorage.GameCorrectionEvents:FindFirstChild("StopAllVelocity")
+    if not stopVelocity then
+        Library:Notify({Title = "Ошибка", Description = "StopAllVelocity не найден", Duration = 3})
         return
     end
-    
-    local createLine = grabEvents:FindFirstChild("CreateGrabLine")
-    local setOwner = grabEvents:FindFirstChild("SetNetworkOwner")
-    
-    if not createLine or not setOwner then
-        Library:Notify({Title = "Ошибка", Description = "События граба не найдены", Duration = 3})
-        return
-    end
-    
-    local players = game:GetService("Players")
-    local localPlayer = players.LocalPlayer
-    
-    -- Отключаем рендер линий для себя (чтобы не лагать)
-    local oldCreate = createLine.OnClientEvent
-    createLine.OnClientEvent = function() end
     
     lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if not lagActive then return end
         
-        lagPacketSkip = lagPacketSkip + 1
-        if lagPacketSkip % 2 == 0 then
-            local packetsPerFrame = math.floor(lagPower / 60)
-            if packetsPerFrame < 1 then packetsPerFrame = 1 end
-            if packetsPerFrame > 100 then packetsPerFrame = 100 end
-            
-            for _, plr in ipairs(players:GetPlayers()) do
-                if plr ~= localPlayer and plr.Character then
-                    local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        for i = 1, packetsPerFrame do
-                            pcall(function()
-                                createLine:FireServer(hrp, hrp.CFrame)
-                                setOwner:FireServer(hrp, hrp.CFrame)
-                            end)
-                        end
-                    end
-                end
-            end
+        local packetsPerFrame = math.floor(lagPower / 60)
+        if packetsPerFrame < 1 then packetsPerFrame = 1 end
+        if packetsPerFrame > 300 then packetsPerFrame = 300 end
+        
+        for i = 1, packetsPerFrame do
+            pcall(function()
+                stopVelocity:FireServer()
+            end)
         end
     end)
     
-    Library:Notify({Title = "Лаг сервера", Description = "Включён (" .. lagPower .. " пакетов/сек)", Duration = 3})
+    Library:Notify({Title = "Лаг сервера", Description = "Включён (" .. lagPower .. " запросов/сек)", Duration = 3})
 end
 
 local function stopLag()
