@@ -1,4 +1,4 @@
--- [[ MOBILE MENU - Ultra Minimal ]]
+-- [[ MOBILE MENU - Fixed ]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -18,12 +18,12 @@ end
 
 -- ========== ПЛАВАЮЩАЯ КРУГЛАЯ КНОПКА ==========
 local FloatButton = Instance.new("TextButton")
-FloatButton.Size = UDim2.new(0, 60, 0, 60)
-FloatButton.Position = UDim2.new(0.85, 0, 0.85, 0)
+FloatButton.Size = UDim2.new(0, 65, 0, 65)
+FloatButton.Position = UDim2.new(0.8, 0, 0.8, 0)
 FloatButton.BackgroundColor3 = Color3.fromRGB(80, 150, 255)
 FloatButton.Text = "⚡"
 FloatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-FloatButton.TextSize = 28
+FloatButton.TextSize = 32
 FloatButton.Font = Enum.Font.GothamBold
 FloatButton.BorderSizePixel = 0
 FloatButton.Parent = ScreenGui
@@ -32,23 +32,7 @@ local ButtonCorner = Instance.new("UICorner")
 ButtonCorner.CornerRadius = UDim.new(1, 0)
 ButtonCorner.Parent = FloatButton
 
-local ButtonStroke = Instance.new("UIStroke")
-ButtonStroke.Color = Color3.fromRGB(120, 180, 255)
-ButtonStroke.Thickness = 2
-ButtonStroke.Parent = FloatButton
-
--- Тень для кнопки
-local Shadow = Instance.new("ImageLabel")
-Shadow.Size = UDim2.new(1, 8, 1, 8)
-Shadow.Position = UDim2.new(0, -4, 0, -4)
-Shadow.BackgroundTransparency = 1
-Shadow.Image = "rbxassetid://131604521"
-Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-Shadow.ImageTransparency = 0.6
-Shadow.ZIndex = -1
-Shadow.Parent = FloatButton
-
--- Перетаскивание кнопки
+-- Перетаскивание кнопки (ПРАВИЛЬНОЕ)
 local btnDragActive = false
 local btnDragStart
 local btnStartPos
@@ -64,15 +48,34 @@ FloatButton.TouchMoved:Connect(function(input)
         local delta = input.Position - btnDragStart
         local newX = btnStartPos.X.Offset + delta.X
         local newY = btnStartPos.Y.Offset + delta.Y
-        -- Ограничения по краям экрана
-        newX = math.clamp(newX, 0, 800)
-        newY = math.clamp(newY, 0, 1400)
         FloatButton.Position = UDim2.new(0, newX, 0, newY)
     end
 end)
 
 FloatButton.TouchEnded:Connect(function()
     btnDragActive = false
+end)
+
+-- Нажатие на кнопку (ОТДЕЛЬНО от перетаскивания)
+local tapStartTime = 0
+local tapStartPos = nil
+
+FloatButton.TouchBegan:Connect(function(input)
+    tapStartTime = tick()
+    tapStartPos = input.Position
+end)
+
+FloatButton.TouchEnded:Connect(function(input)
+    local duration = tick() - tapStartTime
+    local distance = (input.Position - tapStartPos).Magnitude
+    -- Если нажали быстро и не двигали сильно — это клик
+    if duration < 0.3 and distance < 10 then
+        if menuOpen then
+            CloseMenu()
+        else
+            OpenMenu()
+        end
+    end
 end)
 
 -- ========== ОСНОВНАЯ ПАНЕЛЬ ==========
@@ -173,11 +176,14 @@ local CloseCorner = Instance.new("UICorner")
 CloseCorner.CornerRadius = UDim.new(1, 0)
 CloseCorner.Parent = CloseBtn
 
+CloseBtn.TouchTap:Connect(function()
+    CloseMenu()
+end)
+
 -- ========== ЛОГИКА ОТКРЫТИЯ/ЗАКРЫТИЯ ==========
 local menuOpen = false
 
--- Открыть меню
-local function OpenMenu()
+function OpenMenu()
     menuOpen = true
     MainFrame.Visible = true
     MainFrame.BackgroundTransparency = 1
@@ -186,27 +192,12 @@ local function OpenMenu()
     MainFrame.BackgroundTransparency = 0.1
 end
 
--- Закрыть меню
-local function CloseMenu()
+function CloseMenu()
     menuOpen = false
     MainFrame:TweenSize(UDim2.new(0, 0, 0, 400), "Out", "Quad", 0.25)
     task.wait(0.25)
     MainFrame.Visible = false
 end
-
--- Нажатие на плавающую кнопку
-FloatButton.TouchTap:Connect(function()
-    if menuOpen then
-        CloseMenu()
-    else
-        OpenMenu()
-    end
-end)
-
--- Кнопка закрытия внутри меню
-CloseBtn.TouchTap:Connect(function()
-    CloseMenu()
-end)
 
 -- ========== ПЕРЕТАСКИВАНИЕ ПАНЕЛИ ==========
 local dragActive = false
@@ -234,7 +225,7 @@ end)
 FloatButton.BackgroundTransparency = 1
 FloatButton.Size = UDim2.new(0, 0, 0, 0)
 task.wait(0.05)
-FloatButton:TweenSize(UDim2.new(0, 60, 0, 60), "Out", "Quad", 0.3)
+FloatButton:TweenSize(UDim2.new(0, 65, 0, 65), "Out", "Quad", 0.3)
 FloatButton.BackgroundTransparency = 0
 
-print("✅ Меню загружено | Нажми на круглую кнопку")
+print("✅ Меню загружено | Кнопка двигается и открывает меню")
