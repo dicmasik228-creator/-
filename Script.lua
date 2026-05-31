@@ -94,38 +94,80 @@ PlayersGroup:AddToggle("ThirdPerson", {
     end
 })
 
-local walkSpeedSlider = PlayersGroup:AddSlider("WalkSpeed", {
-    Text = "Увеличить скорость",
+local speedActive = false
+local currentSpeedValue = 16
+local speedConnection = nil
+
+local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
+    Text = "Сила ускорения",
     Default = 16,
     Min = 0,
-    Max = 10000,
+    Max = 500,
     Rounding = 0,
-    Callback = function(Value) end
+    Callback = function(Value)
+        currentSpeedValue = Value
+    end
 })
 
-local function applyWalkSpeed()
-    local char = game.Players.LocalPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        local speed = walkSpeedSlider.Value
-        char.Humanoid.WalkSpeed = speed
-        Library:Notify({
-            Title = "BROKEN SPAWN",
-            Description = "Скорость установлена: " .. speed,
-            Duration = 2
-        })
-    else
-        Library:Notify({
-            Title = "BROKEN SPAWN",
-            Description = "Персонаж не найден",
-            Duration = 2
-        })
+local function startSpeedBoost()
+    if speedConnection then
+        speedConnection:Disconnect()
+        speedConnection = nil
+    end
+    
+    speedConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not speedActive then return end
+        
+        local char = game.Players.LocalPlayer.Character
+        if not char then return end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        
+        if not hrp or not hum then return end
+        
+        local cam = workspace.CurrentCamera
+        local moveDirection = Vector3.zero
+        local uis = game:GetService("UserInputService")
+        
+        if uis:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + cam.CFrame.LookVector
+        end
+        if uis:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection - cam.CFrame.LookVector
+        end
+        if uis:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection - cam.CFrame.RightVector
+        end
+        if uis:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + cam.CFrame.RightVector
+        end
+        
+        if moveDirection.Magnitude > 0 then
+            moveDirection = moveDirection.Unit
+            local velocity = moveDirection * currentSpeedValue
+            hrp.Velocity = Vector3.new(velocity.X, hrp.Velocity.Y, velocity.Z)
+        end
+    end)
+end
+
+local function stopSpeedBoost()
+    if speedConnection then
+        speedConnection:Disconnect()
+        speedConnection = nil
     end
 end
 
-PlayersGroup:AddButton({
-    Text = "Применить скорость",
-    Func = function()
-        applyWalkSpeed()
+PlayersGroup:AddToggle("SpeedToggle", {
+    Text = "Ускорение (толкает вперёд)",
+    Default = false,
+    Callback = function(Value)
+        speedActive = Value
+        if Value then
+            startSpeedBoost()
+        else
+            stopSpeedBoost()
+        end
     end
 })
 
@@ -255,127 +297,3 @@ local function startPacketLagDetector()
             end
             task.delay(5, function()
                 lastLagSource = false
-            end)
-        end
-    end)
-end
-
-AntiLagGroup:AddToggle("AntiLag", {
-    Text = "Анти Лаг",
-    Default = false,
-    Callback = function(Value)
-        antiLagActive = Value
-        if Value then
-            setupAntiLag()
-        end
-    end
-})
-
-AntiLagGroup:AddToggle("AutoAntiLag", {
-    Text = "Авто Анти Лаг",
-    Default = false,
-    Callback = function(Value)
-        packetLagActive = Value
-        if Value then
-            startPacketLagDetector()
-        end
-    end
-})
-
-local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
-
-local furtherReachActive = false
-local furtherReachBind = nil
-local furtherReachConnection = nil
-
-local function loadFurtherReach()
-    local success, result = pcall(function()
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/ultraskidding/luau/refs/heads/main/ftap/gamepassreach.lua"))()
-    end)
-    if success then
-        Library:Notify({
-            Title = "BROKEN SPAWN",
-            Description = "Дальний захват загружен",
-            Duration = 3
-        })
-    else
-        Library:Notify({
-            Title = "BROKEN SPAWN",
-            Description = "Ошибка загрузки дальнего захвата",
-            Duration = 3
-        })
-    end
-end
-
-SmileGroup:AddButton({
-    Text = "Дальний захват",
-    Func = function()
-        loadFurtherReach()
-    end
-})
-
-task.spawn(function()
-    print("✅ Оптимизация запущена")
-    
-    local lighting = game:GetService("Lighting")
-    lighting.GlobalShadows = false
-    lighting.Brightness = 1
-    lighting.ClockTime = 14
-    
-    for _, v in ipairs(lighting:GetChildren()) do
-        if v:IsA("BlurEffect") or v:IsA("BloomEffect") or v:IsA("SunRaysEffect") or v:IsA("ColorCorrectionEffect") then
-            v.Enabled = false
-        end
-    end
-    
-    while true do
-        task.wait(15)
-        
-        collectgarbage("collect")
-        collectgarbage("step", 50)
-        
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-                v.Enabled = false
-                v:Destroy()
-            end
-            if v:IsA("Beam") then
-                v:Destroy()
-            end
-            if v:IsA("Decal") and v.Name ~= "PartOwner" then
-                v:Destroy()
-            end
-            if v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight") then
-                v.Enabled = false
-            end
-        end
-        
-        for _, v in ipairs(ReplicatedStorage:GetDescendants()) do
-            if v:IsA("ParticleEmitter") then
-                v.Enabled = false
-            end
-        end
-        
-        lighting.GlobalShadows = false
-        lighting.Brightness = 1
-        lighting.ClockTime = 14
-    end
-end)
-
-local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
-UIGroup:AddButton("Unload", function()
-    Library:Unload()
-end)
-
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-ThemeManager:SetFolder("BrokenSpawn")
-SaveManager:SetFolder("BrokenSpawn/Configs")
-
-ThemeManager:ApplyToTab(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
-
-SaveManager:LoadAutoloadConfig()
-
-print("✅ Меню загружено | Анти Лаг справа | Дальний захват в Smile | Скорость работает")
