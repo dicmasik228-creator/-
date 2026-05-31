@@ -180,13 +180,105 @@ AntiLagGroup:AddToggle("AntiLag", {
 -- ========== ВКЛАДКА SMILE (ПРИКОЛЫ) ==========
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
-SmileGroup:AddButton({
-    Text = "Дальний захват",
-    Func = function()
+local дальнийЗахватАктивен = false
+local дальнийЗахватDiedHandle = nil
+
+local function reloadGrabbingScript()
+    local char = game.Players.LocalPlayer.Character
+    if char and char:FindFirstChild("GrabbingScript") then
         pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/ultraskidding/luau/refs/heads/main/ftap/gamepassreach.lua"))()
+            char.GrabbingScript.Enabled = false
+            char.GrabbingScript.Enabled = true
         end)
-        Library:Notify({Title = "BROKEN SPAWN", Description = "Дальний захват загружен", Duration = 3})
+    end
+end
+
+local function applyДальнийЗахват()
+    local LocalPlayer = game.Players.LocalPlayer
+    local RS = game:GetService("ReplicatedStorage")
+    local RFirst = game:GetService("ReplicatedFirst")
+    
+    local oldMarker = LocalPlayer:FindFirstChild("FartherReach")
+    if oldMarker then oldMarker:Destroy() end
+    
+    local marker = Instance.new("BoolValue")
+    marker.Name = "FartherReach"
+    marker.Value = true
+    marker.Parent = LocalPlayer
+    
+    local ScriptNotify = RS.GamepassEvents.FurtherReachBoughtNotifier
+    local Activator = RS.MenuToys.LimitedTimeToyEvent
+    
+    ScriptNotify.Parent = RFirst
+    Activator.Parent = RS.GamepassEvents
+    Activator.Name = "FurtherReachBoughtNotifier"
+    
+    reloadGrabbingScript()
+    
+    task.delay(0.1, function()
+        pcall(function() Activator:FireServer() end)
+    end)
+end
+
+local function removeДальнийЗахват()
+    local LocalPlayer = game.Players.LocalPlayer
+    local RS = game:GetService("ReplicatedStorage")
+    
+    local marker = LocalPlayer:FindFirstChild("FartherReach")
+    if marker then marker:Destroy() end
+    
+    local ScriptNotify = RS.GamepassEvents.FurtherReachBoughtNotifier
+    local Activator = RS.MenuToys.LimitedTimeToyEvent
+    
+    ScriptNotify.Parent = RS.GamepassEvents
+    Activator.Name = "LimitedTimeToyEvent"
+    Activator.Parent = RS.MenuToys
+    
+    reloadGrabbingScript()
+end
+
+local function toggleДальнийЗахват()
+    дальнийЗахватАктивен = not дальнийЗахватАктивен
+    local isEnabled = дальнийЗахватАктивен
+    
+    Library:Notify({
+        Title = "BROKEN SPAWN",
+        Description = isEnabled and "Дальний захват ВКЛЮЧЁН" or "Дальний захват ВЫКЛЮЧЕН",
+        Duration = 3
+    })
+    
+    if isEnabled then
+        applyДальнийЗахват()
+        
+        if дальнийЗахватDiedHandle then
+            дальнийЗахватDiedHandle:Disconnect()
+        end
+        
+        дальнийЗахватDiedHandle = game.Players.LocalPlayer.CharacterAdded:Connect(function(Character)
+            task.wait(0.5)
+            if дальнийЗахватАктивен then
+                task.wait(0.3)
+                pcall(function() applyДальнийЗахват() end)
+            end
+        end)
+    else
+        removeДальнийЗахват()
+        if дальнийЗахватDiedHandle then
+            дальнийЗахватDiedHandle:Disconnect()
+            дальнийЗахватDiedHandle = nil
+        end
+    end
+end
+
+SmileGroup:AddToggle("ДальнийЗахват", {
+    Text = "Дальний захват",
+    Default = false,
+    Callback = function(Value)
+        if Value and not дальнийЗахватАктивен then
+            toggleДальнийЗахват()
+        elseif not Value and дальнийЗахватАктивен then
+            toggleДальнийЗахват()
+        end
     end
 })
 -- ========== КОНЕЦ ВКЛАДКИ SMILE ==========
@@ -257,4 +349,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 -- ========== КОНЕЦ ВКЛАДКИ SETTINGS ==========
 
-print("✅ Меню загружено | Ускорение (0-10000) толкает вперёд")
+print("✅ Меню загружено | Дальний захват не отключается при смерти")
