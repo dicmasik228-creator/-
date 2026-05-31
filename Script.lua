@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с правильным Анти Грабом ]]
+-- [[ BROKEN SPAWN MENU - с Мгновенным возвратом (без заморозки) ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -100,7 +100,7 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== АНТИ ГРАБ (ПРАВИЛЬНАЯ ЗАМОРОЗКА) ==========
+-- ========== АНТИ ГРАБ (МГНОВЕННЫЙ ВОЗВРАТ, БЕЗ ЗАМОРОЗКИ) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -112,136 +112,65 @@ local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and Replica
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
 local antiGrabActive = false
-local isGrabbed = false
-local savedPosition = nil
 local savedCFrame = nil
-local freezeConnection = nil
-local originalWalkSpeed = nil
-local originalJumpPower = nil
+local returnConnection = nil
 local lastPacketTime = 0
-local hasReturned = false
-
 local PACKET_DELAY = 0.08
 
--- ЗАМОРОЗКА
-local function freezeCharacter(character, hrp, hum)
-    if not hrp or not hum then return end
-    if isGrabbed then return end
+-- МГНОВЕННЫЙ ВОЗВРАТ ТЕЛА (без заморозки)
+local function startReturn(character, hrp)
+    if not hrp then return end
     
-    isGrabbed = true
-    hasReturned = false
-    savedPosition = hrp.Position
+    -- Сохраняем позицию ДО того как сдвинули
     savedCFrame = hrp.CFrame
-    originalWalkSpeed = hum.WalkSpeed
-    originalJumpPower = hum.JumpPower
     
-    -- Полная остановка
-    hrp.Anchored = true
-    hrp.Velocity = Vector3.zero
-    hrp.RotVelocity = Vector3.zero
-    hrp.AssemblyLinearVelocity = Vector3.zero
-    hrp.AssemblyAngularVelocity = Vector3.zero
-    
-    for _, part in pairs(character:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.Velocity = Vector3.zero
-            part.RotVelocity = Vector3.zero
-            part.AssemblyLinearVelocity = Vector3.zero
-            part.AssemblyAngularVelocity = Vector3.zero
-            part.Anchored = true
-        end
-    end
-    
-    hum.WalkSpeed = 0
-    hum.JumpPower = 0
-    hum.PlatformStand = true
-    hum.AutoRotate = false
-    hum.Sit = false
-    
-    -- Фиксация позиции
-    local bp = hrp:FindFirstChild("AntiGrabBP")
-    if bp then bp:Destroy() end
-    bp = Instance.new("BodyPosition")
-    bp.Name = "AntiGrabBP"
-    bp.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bp.D = 10000
-    bp.P = 500000
-    bp.Position = savedPosition
-    bp.Parent = hrp
-    
-    local bg = hrp:FindFirstChild("AntiGrabBG")
-    if bg then bg:Destroy() end
-    bg = Instance.new("BodyGyro")
-    bg.Name = "AntiGrabBG"
-    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bg.P = 500000
-    bg.CFrame = savedCFrame
-    bg.Parent = hrp
-    
-    -- Контроль возврата
-    if freezeConnection then freezeConnection:Disconnect() end
-    freezeConnection = RunService.Heartbeat:Connect(function()
-        if not antiGrabActive or not isGrabbed then
-            if freezeConnection then freezeConnection:Disconnect() end
-            freezeConnection = nil
+    -- Запускаем постоянный возврат (каждый кадр)
+    if returnConnection then returnConnection:Disconnect() end
+    returnConnection = RunService.Heartbeat:Connect(function()
+        if not antiGrabActive then
+            if returnConnection then returnConnection:Disconnect() end
+            returnConnection = nil
             return
         end
         
-        if hrp and hrp.Parent and hum and hum.Parent then
-            local dist = (hrp.Position - savedPosition).Magnitude
-            
-            -- Если тело вернулось на место
-            if dist <= 0.01 and not hasReturned then
-                hasReturned = true
-                
-                -- Отключаем freezeConnection
-                if freezeConnection then
-                    freezeConnection:Disconnect()
-                    freezeConnection = nil
-                end
-                
-                -- Возвращаем скорость
-                hrp.Anchored = false
+        if hrp and hrp.Parent then
+            -- МГНОВЕННЫЙ ВОЗВРАТ на сохранённую позицию
+            if (hrp.Position - savedCFrame.Position).Magnitude > 0.001 then
+                hrp.CFrame = savedCFrame
                 hrp.Velocity = Vector3.zero
                 hrp.RotVelocity = Vector3.zero
                 hrp.AssemblyLinearVelocity = Vector3.zero
                 hrp.AssemblyAngularVelocity = Vector3.zero
-                
-                for _, part in pairs(character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.Anchored = false
-                        part.Velocity = Vector3.zero
-                        part.RotVelocity = Vector3.zero
-                        part.AssemblyLinearVelocity = Vector3.zero
-                        part.AssemblyAngularVelocity = Vector3.zero
-                    end
+            end
+            
+            -- Также возвращаем все части тела
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part ~= hrp then
+                    part.Velocity = Vector3.zero
+                    part.RotVelocity = Vector3.zero
+                    part.AssemblyLinearVelocity = Vector3.zero
+                    part.AssemblyAngularVelocity = Vector3.zero
                 end
-                
-                hum.WalkSpeed = originalWalkSpeed or 16
-                hum.JumpPower = originalJumpPower or 50
-                hum.PlatformStand = false
-                hum.AutoRotate = true
-                hum.Sit = false
-                
-                -- Чистим BodyPosition/BodyGyro
-                local bpClean = hrp:FindFirstChild("AntiGrabBP")
-                if bpClean then bpClean:Destroy() end
-                local bgClean = hrp:FindFirstChild("AntiGrabBG")
-                if bgClean then bgClean:Destroy() end
-                
-                isGrabbed = false
             end
         end
     end)
 end
 
+local function stopReturn()
+    if returnConnection then
+        returnConnection:Disconnect()
+        returnConnection = nil
+    end
+end
+
 -- БОРЬБА С ГРАБОМ
-local function struggleLoop(head, hrp, character, hum)
+local function struggleLoop(head, hrp, character)
     if not antiGrabActive then return end
     
     lastPacketTime = 0
     
-    while antiGrabActive and isGrabbed and head and head:FindFirstChild("PartOwner") do
+    while antiGrabActive and head and head:FindFirstChild("PartOwner") do
+        -- Отправляем Struggle
         if tick() - lastPacketTime >= PACKET_DELAY then
             lastPacketTime = tick()
             if Struggle then
@@ -249,16 +178,20 @@ local function struggleLoop(head, hrp, character, hum)
             end
         end
         
-        -- Обнуляем скорость во время граба
-        if hrp then
-            hrp.Velocity = Vector3.zero
-            hrp.RotVelocity = Vector3.zero
-            hrp.AssemblyLinearVelocity = Vector3.zero
-            hrp.AssemblyAngularVelocity = Vector3.zero
+        -- Мгновенный возврат на место (каждую итерацию)
+        if hrp and hrp.Parent and savedCFrame then
+            if (hrp.Position - savedCFrame.Position).Magnitude > 0.001 then
+                hrp.CFrame = savedCFrame
+                hrp.Velocity = Vector3.zero
+                hrp.RotVelocity = Vector3.zero
+            end
         end
         
         task.wait(0.005)
     end
+    
+    -- Отпустили - останавливаем возврат
+    stopReturn()
 end
 
 -- ОТСЛЕЖИВАНИЕ ГРАБА
@@ -267,9 +200,8 @@ local function setupAntiGrab(character)
     
     local head = character:FindFirstChild("Head")
     local hrp = character:FindFirstChild("HumanoidRootPart")
-    local hum = character:FindFirstChild("Humanoid")
     
-    if not head or not hrp or not hum then return end
+    if not head or not hrp then return end
     
     if antiGrabConnections then
         if antiGrabConnections["PartOwner"] then
@@ -282,18 +214,19 @@ local function setupAntiGrab(character)
     
     antiGrabConnections = antiGrabConnections or {}
     
+    -- При захвате - запускаем возврат и борьбу
     antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
-        if child.Name == "PartOwner" and antiGrabActive and not isGrabbed then
-            freezeCharacter(character, hrp, hum)
-            task.spawn(struggleLoop, head, hrp, character, hum)
+        if child.Name == "PartOwner" and antiGrabActive then
+            startReturn(character, hrp)
+            task.spawn(struggleLoop, head, hrp, character)
         end
     end)
     
     if isHeld then
         antiGrabConnections["IsHeld"] = isHeld.Changed:Connect(function(held)
-            if held and antiGrabActive and not isGrabbed then
-                freezeCharacter(character, hrp, hum)
-                task.spawn(struggleLoop, head, hrp, character, hum)
+            if held and antiGrabActive then
+                startReturn(character, hrp)
+                task.spawn(struggleLoop, head, hrp, character)
             end
         end)
     end
@@ -313,7 +246,7 @@ local function setAntiGrab(enabled)
         if not antiGrabConnections["CharacterAdded"] then
             antiGrabConnections["CharacterAdded"] = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
         end
-        print("✅ Анти Граб ВКЛЮЧЁН")
+        print("✅ Анти Граб ВКЛЮЧЁН (мгновенный возврат)")
     else
         if antiGrabConnections then
             for _, conn in pairs(antiGrabConnections) do
@@ -321,30 +254,7 @@ local function setAntiGrab(enabled)
             end
         end
         antiGrabConnections = {}
-        
-        local char = LocalPlayer.Character
-        if char then
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            local hum = char:FindFirstChild("Humanoid")
-            isGrabbed = false
-            if freezeConnection then
-                freezeConnection:Disconnect()
-                freezeConnection = nil
-            end
-            if hrp then
-                hrp.Anchored = false
-                local bp = hrp:FindFirstChild("AntiGrabBP")
-                if bp then bp:Destroy() end
-                local bg = hrp:FindFirstChild("AntiGrabBG")
-                if bg then bg:Destroy() end
-            end
-            if hum then
-                hum.WalkSpeed = 16
-                hum.JumpPower = 50
-                hum.PlatformStand = false
-                hum.AutoRotate = true
-            end
-        end
+        stopReturn()
         print("✅ Анти Граб ВЫКЛЮЧЕН")
     end
 end
@@ -375,4 +285,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб во вкладке Defense")
+print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб во вкладке Defense (мгновенный возврат)")
