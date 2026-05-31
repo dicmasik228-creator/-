@@ -12,37 +12,29 @@ local Window = Library:CreateWindow({
     ShowCustomCursor = true,
 })
 
+-- ТОЛЬКО ЭТИ ВКЛАДКИ
 local Tabs = {
-    Visual = Window:AddTab("Visual", "eye"),
-    AutoClicker = Window:AddTab("Auto-Clicker", "mouse"),
-    Keybinds = Window:AddTab("Keybinds", "keyboard"),
-    Misc = Window:AddTab("Misc", "layers"),
-    Lists = Window:AddTab("Lists", "list"),
-    Settings = Window:AddTab("Settings", "settings"),
+    Players = Window:AddTab("Players", "users"),        -- игроки
+    Target = Window:AddTab("Target", "target"),         -- прицел
+    TargetBlob = Window:AddTab("Target Blob", "bot"),   -- таргет блобом
+    Defense = Window:AddTab("Defense", "shield"),       -- защита (щит)
+    Smile = Window:AddTab("Smile", "smile"),            -- улыбка
+    Settings = Window:AddTab("Settings", "settings"),   -- настройки
 }
 
-local VisualGroup = Tabs.Visual:AddLeftGroupbox("ESP")
-VisualGroup:AddToggle("PCLD_ESP", {
-    Text = "PCLD ESP",
-    Default = false,
-    Callback = function(Value) end
-})
+-- Пустые заглушки (чтобы не было ошибок)
+local function addEmptyGroup(tab, name)
+    local group = tab:AddLeftGroupbox(name)
+    group:AddLabel(" ")
+end
 
-local ClickerGroup = Tabs.AutoClicker:AddLeftGroupbox("Auto Clicker")
-ClickerGroup:AddToggle("AutoClicker", {
-    Text = "Auto Clicker",
-    Default = false,
-    Callback = function(Value) end
-})
+addEmptyGroup(Tabs.Players, "Players")
+addEmptyGroup(Tabs.Target, "Target")
+addEmptyGroup(Tabs.TargetBlob, "Target Blob")
+addEmptyGroup(Tabs.Defense, "Defense")
+addEmptyGroup(Tabs.Smile, "Smile")
 
-local KeybindsGroup = Tabs.Keybinds:AddLeftGroupbox("Keybinds")
-KeybindsGroup:AddKeyPicker("MenuKey", {
-    Text = "Open Menu",
-    Default = "RightShift",
-    NoUI = false,
-    Callback = function() end
-})
-
+-- Настройки (только выгрузка)
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 UIGroup:AddButton("Unload", function()
     Library:Unload()
