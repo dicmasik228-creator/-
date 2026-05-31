@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - Анти Граб (простой и рабочий) ]]
+-- [[ BROKEN SPAWN MENU - ПРОСТОЙ РАБОЧИЙ АНТИ ГРАБ ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -112,129 +112,97 @@ local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and Replica
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
 local antiGrabActive = false
-local savedCFrame = nil
-local returnTask = nil
-local currentHead = nil
+local savedPosition = nil
+local returnLoop = nil
 local currentHRP = nil
 
-local PACKET_DELAY = 0.08
-
--- СОХРАНЕНИЕ ПОЗИЦИИ
-local function savePosition(hrp)
-    if hrp and hrp.Parent then
-        savedCFrame = hrp.CFrame
-        print("✅ Позиция сохранена")
+-- СОХРАНЯЕМ ПОЗИЦИЮ
+local function saveMyPosition(hrp)
+    if hrp then
+        savedPosition = hrp.Position
+        print("📍 Позиция сохранена:", savedPosition)
     end
 end
 
--- ГЛАВНЫЙ ЦИКЛ ВОЗВРАТА
-local function startReturn(hrp, head)
-    if returnTask then return end
+-- ЗАПУСКАЕМ ВОЗВРАТ
+local function startReturn(hrp)
+    if returnLoop then return end
     
-    savePosition(hrp)
+    saveMyPosition(hrp)
+    currentHRP = hrp
     
-    returnTask = task.spawn(function()
-        print("🔄 Возврат запущен")
-        while returnTask and antiGrabActive and hrp and hrp.Parent do
-            -- Проверяем: всё ещё в грабе?
-            local isGrabbed = head and head:FindFirstChild("PartOwner")
-            local isHeldNow = isHeld and isHeld.Value
-            
-            if isGrabbed or isHeldNow then
-                -- ВОЗВРАЩАЕМ НА МЕСТО
-                if savedCFrame then
-                    hrp.CFrame = savedCFrame
-                    hrp.Velocity = Vector3.zero
-                    hrp.RotVelocity = Vector3.zero
-                end
-                task.wait(0.001) -- каждую миллисекунду
-            else
-                -- Граб закончился - выходим
-                print("✅ Граб закончился, возврат остановлен")
-                break
-            end
+    returnLoop = RunService.Heartbeat:Connect(function()
+        if not antiGrabActive then
+            if returnLoop then returnLoop:Disconnect() end
+            returnLoop = nil
+            return
         end
-        returnTask = nil
+        
+        local head = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
+        local isGrabbed = head and head:FindFirstChild("PartOwner")
+        local isHeldNow = isHeld and isHeld.Value
+        
+        if (isGrabbed or isHeldNow) and currentHRP and currentHRP.Parent then
+            -- ВОЗВРАЩАЕМ НА МЕСТО
+            currentHRP.Position = savedPosition
+            currentHRP.Velocity = Vector3.zero
+            currentHRP.RotVelocity = Vector3.zero
+        elseif not (isGrabbed or isHeldNow) then
+            -- Граб закончился - отключаемся
+            if returnLoop then returnLoop:Disconnect() end
+            returnLoop = nil
+            currentHRP = nil
+            print("✅ Граб закончился, возврат отключён")
+        end
     end)
-end
-
-local function stopReturn()
-    if returnTask then
-        task.cancel(returnTask)
-        returnTask = nil
-    end
-end
-
--- БОРЬБА С ГРАБОМ
-local function struggleLoop(head, hrp)
-    if not antiGrabActive then return end
-    
-    local lastTime = 0
-    
-    while antiGrabActive and head and head:FindFirstChild("PartOwner") do
-        if tick() - lastTime >= PACKET_DELAY then
-            lastTime = tick()
-            if Struggle then
-                pcall(function() Struggle:FireServer(LocalPlayer) end)
-            end
-        end
-        task.wait(0.05)
-    end
 end
 
 -- ОТСЛЕЖИВАНИЕ ГРАБА
-local function setupAntiGrab(character)
-    if not character then return end
+local function setupAntiGrab()
+    local char = LocalPlayer.Character
+    if not char then return end
     
-    local head = character:FindFirstChild("Head")
-    local hrp = character:FindFirstChild("HumanoidRootPart")
+    local head = char:FindFirstChild("Head")
+    local hrp = char:FindFirstChild("HumanoidRootPart")
     
     if not head or not hrp then return end
     
-    currentHead = head
-    currentHRP = hrp
-    
-    if antiGrabConnections then
-        if antiGrabConnections["PartOwner"] then
-            antiGrabConnections["PartOwner"]:Disconnect()
-        end
-        if antiGrabConnections["IsHeld"] then
-            antiGrabConnections["IsHeld"]:Disconnect()
-        end
-    end
-    
-    antiGrabConnections = antiGrabConnections or {}
-    
-    -- При захвате
-    antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
+    -- Следим за появлением PartOwner
+    local conn
+    conn = head.ChildAdded:Connect(function(child)
         if child.Name == "PartOwner" and antiGrabActive then
-            startReturn(hrp, head)
-            task.spawn(struggleLoop, head, hrp)
+            print("⚠️ Граб обнаружен!")
+            startReturn(hrp)
+            
+            -- Отправляем Struggle
+            task.spawn(function()
+                while antiGrabActive and head and head:FindFirstChild("PartOwner") do
+                    if Struggle then
+                        pcall(function() Struggle:FireServer(LocalPlayer) end)
+                    end
+                    task.wait(0.1)
+                end
+            end)
         end
     end)
     
-    -- Через IsHeld
-    if isHeld then
-        antiGrabConnections["IsHeld"] = isHeld.Changed:Connect(function(held)
-            if held and antiGrabActive then
-                startReturn(hrp, head)
-                task.spawn(struggleLoop, head, hrp)
-            end
-        end)
+    -- Сохраняем для отключения
+    if antiGrabConnections then
+        antiGrabConnections["PartOwner"] = conn
     end
 end
 
-local function onCharacterAdded(character)
-    task.wait(0.3)
-    setupAntiGrab(character)
+local function onCharacterAdded()
+    task.wait(0.5)
+    setupAntiGrab()
 end
 
 local function setAntiGrab(enabled)
     antiGrabActive = enabled
     
     if enabled then
-        local char = LocalPlayer.Character
-        if char then setupAntiGrab(char) end
+        setupAntiGrab()
+        if not antiGrabConnections then antiGrabConnections = {} end
         if not antiGrabConnections["CharacterAdded"] then
             antiGrabConnections["CharacterAdded"] = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
         end
@@ -244,9 +212,12 @@ local function setAntiGrab(enabled)
             for _, conn in pairs(antiGrabConnections) do
                 pcall(function() conn:Disconnect() end)
             end
+            antiGrabConnections = {}
         end
-        antiGrabConnections = {}
-        stopReturn()
+        if returnLoop then
+            returnLoop:Disconnect()
+            returnLoop = nil
+        end
         print("✅ Анти Граб ВЫКЛЮЧЕН")
     end
 end
