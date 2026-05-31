@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с Анти Кик (Ресет) и Анти Грабом ]]
+-- [[ BROKEN SPAWN MENU - ФИКС ВОЗВРАТА (без Anchored) ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -129,7 +129,6 @@ local function setupAntiKickReset()
         local msgLower = string.lower(tostring(message))
         for _, kickMsg in ipairs(kickMessages) do
             if string.find(msgLower, kickMsg) then
-                -- Ресет персонажа
                 local char = LocalPlayer.Character
                 if char then
                     local hum = char:FindFirstChild("Humanoid")
@@ -146,7 +145,7 @@ end
 
 local antiKickResetActive = false
 
--- ========== АНТИ ГРАБ (МАКСИМАЛЬНО БЫСТРЫЙ ВОЗВРАТ) ==========
+-- ========== АНТИ ГРАБ (ПРОСТОЙ ВОЗВРАТ, БЕЗ Anchored) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -159,133 +158,88 @@ local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
 local antiGrabActive = false
 local savedCFrame = nil
-local savedPosition = nil
 local returnConnection = nil
-local savedHRP = nil
-local savedCharacter = nil
-local lastPacketTime = 0
-local isCurrentlyGrabbed = false
 local returnTask = nil
+local currentHead = nil
 
 local PACKET_DELAY = 0.08
 
 -- СОХРАНЕНИЕ ПОЗИЦИИ
-local function saveMyPost(hrp)
-    if not hrp then return end
-    savedCFrame = hrp.CFrame
-    savedPosition = hrp.Position
+local function savePosition(hrp)
+    if hrp and hrp.Parent then
+        savedCFrame = hrp.CFrame
+        print("✅ Позиция сохранена")
+    end
 end
 
--- МАКСИМАЛЬНО БЫСТРЫЙ ВОЗВРАТ
-local function startReturn(character, hrp)
+-- ЗАПУСК ВОЗВРАТА
+local function startReturn(hrp)
     if not hrp then return end
-    
-    savedHRP = hrp
-    savedCharacter = character
-    
     if returnTask then return end
     
-    if returnConnection then
-        returnConnection:Disconnect()
-        returnConnection = nil
-    end
+    savePosition(hrp)
     
-    returnConnection = RunService.Heartbeat:Connect(function()
-        if not antiGrabActive then
-            stopReturn()
-            return
-        end
-        
-        local head = savedCharacter and savedCharacter:FindFirstChild("Head")
-        local hum = savedCharacter and savedCharacter:FindFirstChild("Humanoid")
-        local isRagdolled = hum and hum:FindFirstChild("Ragdolled") and hum.Ragdolled.Value
-        local isGrabbed = head and head:FindFirstChild("PartOwner")
-        local isHeldNow = isHeld and isHeld.Value
-        
-        if isGrabbed or isRagdolled or isHeldNow then
-            isCurrentlyGrabbed = true
-            if savedHRP and savedHRP.Parent and savedCFrame then
-                savedHRP.CFrame = savedCFrame
-                savedHRP.Velocity = Vector3.zero
-                savedHRP.RotVelocity = Vector3.zero
-                savedHRP.AssemblyLinearVelocity = Vector3.zero
-                savedHRP.AssemblyAngularVelocity = Vector3.zero
-                
-                for _, part in pairs(savedCharacter:GetDescendants()) do
-                    if part:IsA("BasePart") and part ~= savedHRP then
-                        part.Velocity = Vector3.zero
-                        part.RotVelocity = Vector3.zero
-                        part.AssemblyLinearVelocity = Vector3.zero
-                        part.AssemblyAngularVelocity = Vector3.zero
-                    end
-                end
-            end
-        else
-            if isCurrentlyGrabbed then
-                isCurrentlyGrabbed = false
-            end
-            stopReturn()
-        end
-    end)
-    
-    if returnTask then task.cancel(returnTask) end
+    -- Основной цикл возврата (каждые 0.001 секунды)
     returnTask = task.spawn(function()
-        while returnConnection and antiGrabActive do
-            if savedHRP and savedHRP.Parent and savedCFrame then
-                savedHRP.CFrame = savedCFrame
-                savedHRP.Velocity = Vector3.zero
-                savedHRP.AssemblyLinearVelocity = Vector3.zero
-                savedHRP.AssemblyAngularVelocity = Vector3.zero
+        while returnTask and antiGrabActive and hrp and hrp.Parent do
+            -- Проверяем, всё ещё в грабе?
+            local stillGrabbed = currentHead and currentHead:FindFirstChild("PartOwner")
+            local stillHeld = isHeld and isHeld.Value
+            
+            if stillGrabbed or stillHeld then
+                -- МГНОВЕННЫЙ ВОЗВРАТ НА МЕСТО
+                if savedCFrame then
+                    hrp.CFrame = savedCFrame
+                    hrp.Velocity = Vector3.zero
+                    hrp.RotVelocity = Vector3.zero
+                    hrp.AssemblyLinearVelocity = Vector3.zero
+                    hrp.AssemblyAngularVelocity = Vector3.zero
+                end
+                task.wait(0.001)  -- каждую миллисекунду
+            else
+                -- Граба нет - выходим
+                break
             end
-            task.wait(0.001)
         end
+        returnTask = nil
+        print("✅ Возврат остановлен")
     end)
 end
 
 local function stopReturn()
-    if returnConnection then
-        returnConnection:Disconnect()
-        returnConnection = nil
-    end
     if returnTask then
         task.cancel(returnTask)
         returnTask = nil
     end
-    savedHRP = nil
-    savedCharacter = nil
 end
 
-local function struggleLoop(head, hrp, character)
+-- БОРЬБА С ГРАБОМ
+local function struggleLoop(head)
     if not antiGrabActive then return end
     
-    lastPacketTime = 0
+    local lastTime = 0
     
     while antiGrabActive and head and head:FindFirstChild("PartOwner") do
-        if tick() - lastPacketTime >= PACKET_DELAY then
-            lastPacketTime = tick()
+        if tick() - lastTime >= PACKET_DELAY then
+            lastTime = tick()
             if Struggle then
                 pcall(function() Struggle:FireServer(LocalPlayer) end)
             end
         end
-        
-        if hrp and hrp.Parent and savedCFrame then
-            hrp.CFrame = savedCFrame
-            hrp.Velocity = Vector3.zero
-            hrp.RotVelocity = Vector3.zero
-        end
-        
-        task.wait(0.001)
+        task.wait(0.05)
     end
 end
 
+-- ОТСЛЕЖИВАНИЕ ГРАБА
 local function setupAntiGrab(character)
     if not character then return end
     
     local head = character:FindFirstChild("Head")
     local hrp = character:FindFirstChild("HumanoidRootPart")
-    local hum = character:FindFirstChild("Humanoid")
     
     if not head or not hrp then return end
+    
+    currentHead = head
     
     if antiGrabConnections then
         if antiGrabConnections["PartOwner"] then
@@ -294,39 +248,26 @@ local function setupAntiGrab(character)
         if antiGrabConnections["IsHeld"] then
             antiGrabConnections["IsHeld"]:Disconnect()
         end
-        if antiGrabConnections["Ragdolled"] and hum then
-            pcall(function() antiGrabConnections["Ragdolled"]:Disconnect() end)
-        end
     end
     
     antiGrabConnections = antiGrabConnections or {}
     
+    -- При захвате
     antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
         if child.Name == "PartOwner" and antiGrabActive then
-            saveMyPost(hrp)
-            startReturn(character, hrp)
-            task.spawn(struggleLoop, head, hrp, character)
+            savePosition(hrp)
+            startReturn(hrp)
+            task.spawn(struggleLoop, head)
         end
     end)
     
-    if hum then
-        local ragdolled = hum:FindFirstChild("Ragdolled")
-        if ragdolled then
-            antiGrabConnections["Ragdolled"] = ragdolled.Changed:Connect(function()
-                if ragdolled.Value and antiGrabActive then
-                    saveMyPost(hrp)
-                    startReturn(character, hrp)
-                end
-            end)
-        end
-    end
-    
+    -- Через IsHeld
     if isHeld then
         antiGrabConnections["IsHeld"] = isHeld.Changed:Connect(function(held)
             if held and antiGrabActive then
-                saveMyPost(hrp)
-                startReturn(character, hrp)
-                task.spawn(struggleLoop, head, hrp, character)
+                savePosition(hrp)
+                startReturn(hrp)
+                task.spawn(struggleLoop, head)
             end
         end)
     end
