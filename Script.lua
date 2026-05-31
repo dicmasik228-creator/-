@@ -177,33 +177,6 @@ AntiLagGroup:AddToggle("AntiLag", {
 -- ========== КОНЕЦ АНТИ ЛАГ ==========
 -- ========== КОНЕЦ ВКЛАДКИ DEFENSE ==========
 
--- ========== ВКЛАДКА SMILE (ПРИКОЛЫ) ==========
-local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
-
-local дальнийЗахватАктивен = false
-
-SmileGroup:AddToggle("ДальнийЗахват", {
-    Text = "Дальний захват",
-    Default = false,
-    Callback = function(Value)
-        дальнийЗахватАктивен = Value
-        if Value then
-            Library:Notify({
-                Title = "BROKEN SPAWN",
-                Description = "Дальний захват ВКЛЮЧЁН",
-                Duration = 2
-            })
-        else
-            Library:Notify({
-                Title = "BROKEN SPAWN",
-                Description = "Дальний захват ВЫКЛЮЧЕН",
-                Duration = 2
-            })
-        end
-    end
-})
--- ========== КОНЕЦ ВКЛАДКИ SMILE ==========
-
 -- ========== ОПТИМИЗАЦИЯ (РАБОТАЕТ В ФОНЕ) ==========
 task.spawn(function()
     print("✅ Оптимизация запущена")
