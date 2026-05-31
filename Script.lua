@@ -26,7 +26,6 @@ end
 
 addEmptyGroup(Tabs.Target, "Target")
 addEmptyGroup(Tabs.TargetBlob, "Target Blob")
-addEmptyGroup(Tabs.Smile, "Smile")
 
 local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки")
 
@@ -283,6 +282,38 @@ AntiLagGroup:AddToggle("AutoAntiLag", {
     end
 })
 
+local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
+
+local furtherReachActive = false
+local furtherReachBind = nil
+local furtherReachConnection = nil
+
+local function loadFurtherReach()
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet("https://raw.githubusercontent.com/ultraskidding/luau/refs/heads/main/ftap/gamepassreach.lua"))()
+    end)
+    if success then
+        Library:Notify({
+            Title = "BROKEN SPAWN",
+            Description = "Дальний захват загружен",
+            Duration = 3
+        })
+    else
+        Library:Notify({
+            Title = "BROKEN SPAWN",
+            Description = "Ошибка загрузки дальнего захвата",
+            Duration = 3
+        })
+    end
+end
+
+SmileGroup:AddButton({
+    Text = "Дальний захват",
+    Func = function()
+        loadFurtherReach()
+    end
+})
+
 task.spawn(function()
     print("✅ Оптимизация запущена")
     
@@ -347,4 +378,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Анти Лаг справа | Оптимизация работает")
+print("✅ Меню загружено | Анти Лаг справа | Дальний захват в Smile | Скорость работает")
