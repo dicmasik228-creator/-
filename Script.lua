@@ -102,7 +102,6 @@ PlayersGroup:AddToggle("SpeedToggle", {
 -- ========== СИЛА ПРЫЖКА (ВКЛЮЧАТЕЛЬ/ВЫКЛЮЧАТЕЛЬ) ==========
 local jumpActive = false
 local jumpPowerValue = 50
-local originalJumpPower = nil
 
 local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
     Text = "Сила прыжка",
@@ -195,6 +194,55 @@ PlayersGroup:AddToggle("InfiniteJump", {
     end
 })
 -- ========== КОНЕЦ БЕСКОНЕЧНОГО ПРЫЖКА ==========
+
+-- ========== ПРОХОЖДЕНИЕ СКВОЗЬ СТЕНЫ (NOCLIP) ==========
+local noclipActive = false
+local noclipConnection = nil
+
+local function startNoclip()
+    if noclipConnection then noclipConnection:Disconnect() end
+    noclipConnection = game:GetService("RunService").Stepped:Connect(function()
+        if noclipActive then
+            local char = game.Players.LocalPlayer.Character
+            if char then
+                for _, part in pairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function stopNoclip()
+    if noclipConnection then
+        noclipConnection:Disconnect()
+        noclipConnection = nil
+    end
+    local char = game.Players.LocalPlayer.Character
+    if char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+PlayersGroup:AddToggle("Noclip", {
+    Text = "Прохождение сквозь стены",
+    Default = false,
+    Callback = function(Value)
+        noclipActive = Value
+        if Value then
+            startNoclip()
+        else
+            stopNoclip()
+        end
+    end
+})
+-- ========== КОНЕЦ ПРОХОЖДЕНИЯ СКВОЗЬ СТЕНЫ ==========
 
 -- ========== КОНЕЦ ВКЛАДКИ PLAYERS ==========
 
@@ -341,4 +389,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 -- ========== КОНЕЦ ВКЛАДКИ SETTINGS ==========
 
-print("✅ Меню загружено | Ускорение толкает вперёд | Сила прыжка и бесконечный прыжок добавлены")
+print("✅ Меню загружено | Ускорение толкает вперёд | Сила прыжка | Бесконечный прыжок | Прохождение сквозь стены")
