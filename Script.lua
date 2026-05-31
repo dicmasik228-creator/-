@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с Анти Граб (фикс лагов и полёта) ]]
+-- [[ BROKEN SPAWN MENU - с исправленным Анти Грабом ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -32,7 +32,7 @@ addEmptyGroup(Tabs.Target, "Target")
 addEmptyGroup(Tabs.TargetBlob, "Target Blob")
 addEmptyGroup(Tabs.Smile, "Smile")
 
--- ========== АНТИ ГРАБ (БЕЗ ЛАГОВ, БЕЗ ПОЛЁТА) ==========
+-- ========== АНТИ ГРАБ ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -45,107 +45,122 @@ local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
 local antiGrabActive = false
 local antiGrabConnections = {}
-local freezeConnection = nil
-local savedCFrame = nil
 local isGrabbed = false
+local savedPosition = nil
+local savedCFrame = nil
+local freezeConnection = nil
+local originalWalkSpeed = nil
 
-local PACKET_DELAY = 0.1 -- уменьшил частоту пакетов для телефона
+local PACKET_DELAY = 0.08
 
-local function freezeCharacter(character, hrp, hum)
-    if not hrp then return end
-    if isGrabbed then return end  -- уже заморожен
+local function fullFreeze(character, hrp, hum)
+    if not hrp or not hum then return end
+    if isGrabbed then return end
     
     isGrabbed = true
+    savedPosition = hrp.Position
     savedCFrame = hrp.CFrame
+    originalWalkSpeed = hum.WalkSpeed
     
-    -- Полная остановка
     hrp.Anchored = true
     hrp.Velocity = Vector3.zero
     hrp.RotVelocity = Vector3.zero
+    hum.WalkSpeed = 0
+    hum.JumpPower = 0
+    hum.PlatformStand = true
     
-    -- Останавливаем все части тела
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
             part.Velocity = Vector3.zero
             part.RotVelocity = Vector3.zero
+            if part.Name ~= "HumanoidRootPart" then
+                part.Anchored = true
+            end
         end
     end
     
-    -- Фиксация позиции (один раз, без постоянного обновления)
     local bp = hrp:FindFirstChild("AntiGrabBP")
-    if not bp then
-        bp = Instance.new("BodyPosition")
-        bp.Name = "AntiGrabBP"
-        bp.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-        bp.D = 2000
-        bp.P = 100000
-        bp.Parent = hrp
-    end
-    bp.Position = savedCFrame.Position
+    if bp then bp:Destroy() end
+    bp = Instance.new("BodyPosition")
+    bp.Name = "AntiGrabBP"
+    bp.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    bp.D = 2000
+    bp.P = 100000
+    bp.Position = savedPosition
+    bp.Parent = hrp
     
-    -- Блокируем скорость (раз в 0.2 сек, не каждый кадр)
     if freezeConnection then freezeConnection:Disconnect() end
     freezeConnection = RunService.Heartbeat:Connect(function()
-        if antiGrabActive and isGrabbed and hrp and hrp.Parent then
-            hrp.Velocity = Vector3.zero
-            hrp.RotVelocity = Vector3.zero
-            if bp then bp.Position = savedCFrame.Position end
-        else
+        if not antiGrabActive or not isGrabbed then
             if freezeConnection then freezeConnection:Disconnect() end
             freezeConnection = nil
+            return
+        end
+        if hrp and hrp.Parent then
+            if (hrp.Position - savedPosition).Magnitude > 0.1 then
+                hrp.CFrame = savedCFrame
+            end
+            hrp.Velocity = Vector3.zero
+            hrp.RotVelocity = Vector3.zero
+            if bp then bp.Position = savedPosition end
         end
     end)
 end
 
-local function unfreezeCharacter(character, hrp)
+local function fullUnfreeze(character, hrp, hum)
     isGrabbed = false
-    
     if freezeConnection then
         freezeConnection:Disconnect()
         freezeConnection = nil
     end
-    
     if hrp then
         hrp.Anchored = false
         local bp = hrp:FindFirstChild("AntiGrabBP")
         if bp then bp:Destroy() end
         hrp.Velocity = Vector3.zero
         hrp.RotVelocity = Vector3.zero
+        if savedCFrame then hrp.CFrame = savedCFrame end
+    end
+    if character then
+        for _, part in pairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                part.Anchored = false
+                part.Velocity = Vector3.zero
+                part.RotVelocity = Vector3.zero
+            end
+        end
+    end
+    if hum then
+        hum.WalkSpeed = originalWalkSpeed or 16
+        hum.JumpPower = 50
+        hum.PlatformStand = false
     end
 end
 
-local function struggleLoop(head, hrp, character)
+local function struggleLoop(head, hrp, character, hum)
     if not antiGrabActive then return end
-    
     local lastPacketTime = 0
-    local struggleCount = 0
-    
-    while antiGrabActive and isGrabbed and head:FindFirstChild("PartOwner") do
-        -- Отправляем Struggle редко (раз в 0.15 сек)
+    while antiGrabActive and isGrabbed and head and head:FindFirstChild("PartOwner") do
         if tick() - lastPacketTime >= PACKET_DELAY then
             lastPacketTime = tick()
-            if Struggle then
-                pcall(function() Struggle:FireServer(LocalPlayer) end)
-            end
-            struggleCount = struggleCount + 1
-            if struggleCount > 20 then  -- макс 3 секунды, потом отпускаем
-                break
-            end
+            if Struggle then pcall(function() Struggle:FireServer(LocalPlayer) end) end
         end
-        task.wait(0.1)  -- проверяем реже
+        if hrp then
+            hrp.Velocity = Vector3.zero
+            hrp.RotVelocity = Vector3.zero
+        end
+        task.wait(0.1)
     end
-    
-    -- Отпускаем
-    unfreezeCharacter(character, hrp)
+    fullUnfreeze(character, hrp, hum)
 end
 
 local function setupAntiGrab(character)
     if not character then return end
     local head = character:FindFirstChild("Head")
     local hrp = character:FindFirstChild("HumanoidRootPart")
-    if not head or not hrp then return end
+    local hum = character:FindFirstChild("Humanoid")
+    if not head or not hrp or not hum then return end
     
-    -- Удаляем старые соединения
     if antiGrabConnections["PartOwner"] then
         antiGrabConnections["PartOwner"]:Disconnect()
         antiGrabConnections["PartOwner"] = nil
@@ -155,20 +170,18 @@ local function setupAntiGrab(character)
         antiGrabConnections["IsHeld"] = nil
     end
     
-    -- Отслеживаем захват
     antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
         if child.Name == "PartOwner" and antiGrabActive and not isGrabbed then
-            freezeCharacter(character, hrp)
-            task.spawn(struggleLoop, head, hrp, character)
+            fullFreeze(character, hrp, hum)
+            task.spawn(struggleLoop, head, hrp, character, hum)
         end
     end)
     
-    -- Альтернативный способ
     if isHeld then
         antiGrabConnections["IsHeld"] = isHeld.Changed:Connect(function(held)
             if held and antiGrabActive and not isGrabbed then
-                freezeCharacter(character, hrp)
-                task.spawn(struggleLoop, head, hrp, character)
+                fullFreeze(character, hrp, hum)
+                task.spawn(struggleLoop, head, hrp, character, hum)
             end
         end)
     end
@@ -181,7 +194,6 @@ end
 
 local function setAntiGrab(enabled)
     antiGrabActive = enabled
-    
     if enabled then
         local char = LocalPlayer.Character
         if char then setupAntiGrab(char) end
@@ -189,16 +201,15 @@ local function setAntiGrab(enabled)
             antiGrabConnections["CharacterAdded"] = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
         end
     else
-        -- Отключаем всё
         for _, conn in pairs(antiGrabConnections) do
             pcall(function() conn:Disconnect() end)
         end
         antiGrabConnections = {}
-        
         local char = LocalPlayer.Character
         if char then
             local hrp = char:FindFirstChild("HumanoidRootPart")
-            unfreezeCharacter(char, hrp)
+            local hum = char:FindFirstChild("Humanoid")
+            fullUnfreeze(char, hrp, hum)
         end
     end
 end
@@ -229,4 +240,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Анти Граб во вкладке Defense (без лагов)")
+print("✅ Меню загружено | Анти Граб (пакеты 0.8 сек) во вкладке Defense")
