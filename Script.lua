@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN - ЧЁРНОЕ НЕБО, ДЫМ И ТУМАН УБРАНЫ ]]
+-- [[ BROKEN SPAWN - МАКСИМАЛЬНАЯ ОПТИМИЗАЦИЯ (УБИРАЕМ СЕРОСТЬ) ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -113,56 +113,59 @@ AntiLagGroup:AddToggle("AntiLag", {
     end
 })
 
--- ========== ОПТИМИЗАЦИЯ (ЧЁРНОЕ НЕБО) ==========
+-- ========== ОПТИМИЗАЦИЯ (УБИРАЕМ СЕРОСТЬ) ==========
 task.spawn(function()
-    print("✅ Оптимизация: чёрное небо, дым и туман убраны")
+    print("✅ Максимальная оптимизация: убираем серость")
     
     local lighting = game:GetService("Lighting")
     
-    -- Убираем туман
+    -- Отключаем всё освещение
+    lighting.Ambient = Color3.fromRGB(0, 0, 0)
+    lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
+    lighting.Brightness = 0
+    lighting.ExposureCompensation = 0
+    lighting.GlobalShadows = false
+    lighting.ClockTime = 0
     lighting.FogEnd = 0
     lighting.FogStart = 0
     
-    -- Чёрное небо
-    lighting.Ambient = Color3.fromRGB(0, 0, 0)
-    lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
-    lighting.Brightness = 0.5
-    lighting.GlobalShadows = false
-    lighting.ClockTime = 0
+    -- Удаляем всё лишнее из Lighting
+    for _, v in ipairs(lighting:GetChildren()) do
+        pcall(function() v:Destroy() end)
+    end
     
-    -- Удаляем скайбокс
-    local sky = lighting:FindFirstChild("Sky")
+    -- Удаляем скайбокс и атмосферу
+    local sky = game:GetService("Lighting"):FindFirstChild("Sky")
     if sky then sky:Destroy() end
     
-    -- Удаляем все эффекты
-    for _, effect in ipairs(lighting:GetChildren()) do
-        if effect:IsA("BlurEffect") or effect:IsA("BloomEffect") or 
-           effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") or
-           effect:IsA("Atmosphere") then
-            effect.Enabled = false
-            effect:Destroy()
+    -- Удаляем все эффекты в игре
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("PointLight") or v:IsA("SpotLight") or v:IsA("SurfaceLight") then
+            v:Destroy()
+        end
+        if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
+            v.Enabled = false
+            v:Destroy()
+        end
+        if v:IsA("Decal") then
+            v:Destroy()
+        end
+        if v:IsA("Beam") then
+            v:Destroy()
+        end
+        if v:IsA("Atmosphere") or v:IsA("Sky") then
+            v:Destroy()
         end
     end
     
+    -- Постоянно поддерживаем черноту
     while true do
-        task.wait(10)
-        collectgarbage("collect")
-        
-        lighting.FogEnd = 0
-        lighting.FogStart = 0
+        task.wait(5)
         lighting.Ambient = Color3.fromRGB(0, 0, 0)
         lighting.OutdoorAmbient = Color3.fromRGB(0, 0, 0)
+        lighting.Brightness = 0
         lighting.ClockTime = 0
-        
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-                v.Enabled = false
-                v:Destroy()
-            end
-            if v:IsA("Beam") then
-                v:Destroy()
-            end
-        end
+        lighting.FogEnd = 0
     end
 end)
 
@@ -179,4 +182,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ BROKEN SPAWN загружен | Чёрное небо, дым и туман убраны")
+print("✅ BROKEN SPAWN загружен | Максимальная оптимизация включена")
