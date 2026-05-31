@@ -253,8 +253,6 @@ task.spawn(function()
     
     local lighting = game:GetService("Lighting")
     lighting.GlobalShadows = false
-    lighting.FogEnd = 0
-    lighting.FogStart = 0
     lighting.Brightness = 1
     lighting.ClockTime = 14
     
@@ -293,8 +291,8 @@ task.spawn(function()
         end
         
         lighting.GlobalShadows = false
-        lighting.FogEnd = 0
-        lighting.FogStart = 0
+        lighting.Brightness = 1
+        lighting.ClockTime = 14
     end
 end)
 
