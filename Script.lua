@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с Анти Граб, Анти Лаг и Оптимизацией ]]
+-- [[ BROKEN SPAWN MENU - с Анти Граб, Анти Лаг, без тумана ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -35,55 +35,17 @@ addEmptyGroup(Tabs.Smile, "Smile")
 local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки")
 
 local thirdPersonActive = false
-local originalCameraMode = nil
-local originalZoomDistance = nil
 
 local function enableThirdPerson()
     local player = game.Players.LocalPlayer
-    if not player then return end
-    
-    originalCameraMode = player.CameraMode
-    originalZoomDistance = player.CameraMaxZoomDistance
-    
     player.CameraMode = Enum.CameraMode.Classic
     player.CameraMaxZoomDistance = 50
     player.CameraMinZoomDistance = 0.5
-    
-    local function onCharacterAdded()
-        task.wait(0.1)
-        if thirdPersonActive then
-            player.CameraMode = Enum.CameraMode.Classic
-            player.CameraMaxZoomDistance = 50
-            player.CameraMinZoomDistance = 0.5
-        end
-    end
-    
-    if not PlayersGroup._charConn then
-        PlayersGroup._charConn = player.CharacterAdded:Connect(onCharacterAdded)
-    end
 end
 
 local function disableThirdPerson()
     local player = game.Players.LocalPlayer
-    if not player then return end
-    
-    if originalCameraMode then
-        player.CameraMode = originalCameraMode
-    else
-        player.CameraMode = Enum.CameraMode.LockFirstPerson
-    end
-    
-    if originalZoomDistance then
-        player.CameraMaxZoomDistance = originalZoomDistance
-    else
-        player.CameraMaxZoomDistance = 0.5
-    end
-    player.CameraMinZoomDistance = 0.5
-    
-    if PlayersGroup._charConn then
-        PlayersGroup._charConn:Disconnect()
-        PlayersGroup._charConn = nil
-    end
+    player.CameraMode = Enum.CameraMode.LockFirstPerson
 end
 
 PlayersGroup:AddToggle("ThirdPerson", {
@@ -100,114 +62,10 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== ОПТИМИЗАЦИЯ (РАБОТАЕТ ВСЕГДА) ==========
-local function startOptimization()
-    print("✅ Оптимизация запущена (каждые 10 секунд)")
-    
-    local function optimizeLighting()
-        local lighting = game:GetService("Lighting")
-        lighting.GlobalShadows = false
-        lighting.FogEnd = 1000
-        lighting.Brightness = 1.5
-        lighting.ClockTime = 14
-        lighting.Ambient = Color3.fromRGB(80, 80, 80)
-        lighting.OutdoorAmbient = Color3.fromRGB(80, 80, 80)
-        
-        for _, effect in ipairs(lighting:GetChildren()) do
-            if effect:IsA("BlurEffect") or effect:IsA("BloomEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") then
-                effect.Enabled = false
-            end
-        end
-    end
-    
-    local function optimizeWorkspace()
-        workspace.Gravity = 196.2
-        workspace.FallenPartsDestroyHeight = -500
-        
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
-                v.Enabled = false
-            end
-            if v:IsA("Decal") then
-                v.Transparency = 1
-            end
-            if v:IsA("Beam") then
-                v:Destroy()
-            end
-        end
-    end
-    
-    local function optimizePlayers()
-        for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
-            if player.Character then
-                for _, part in ipairs(player.Character:GetDescendants()) do
-                    if part:IsA("ParticleEmitter") or part:IsA("Fire") or part:IsA("Smoke") then
-                        part.Enabled = false
-                    end
-                end
-            end
-        end
-    end
-    
-    local function garbageCollector()
-        collectgarbage("collect")
-        collectgarbage("step", 50)
-    end
-    
-    local function cleanMisc()
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("Beam") or (v.Name and (v.Name:lower():find("line") or v.Name:lower():find("grab"))) then
-                v:Destroy()
-            end
-        end
-        
-        local rs = game:GetService("ReplicatedStorage")
-        for _, v in ipairs(rs:GetDescendants()) do
-            if v:IsA("ParticleEmitter") then
-                v.Enabled = false
-            end
-        end
-    end
-    
-    local function optimizeSounds()
-        local soundService = game:GetService("SoundService")
-        soundService.Volume = 0.5
-        soundService.RespectFilteringEnabled = false
-    end
-    
-    optimizeLighting()
-    optimizeWorkspace()
-    optimizeSounds()
-    
-    task.spawn(function()
-        while true do
-            task.wait(10)
-            garbageCollector()
-            cleanMisc()
-            optimizePlayers()
-        end
-    end)
-    
-    workspace.DescendantAdded:Connect(function(obj)
-        task.wait(0.1)
-        if obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
-            obj.Enabled = false
-        end
-        if obj:IsA("Beam") or (obj.Name and obj.Name:lower():find("line")) then
-            obj:Destroy()
-        end
-    end)
-    
-    print("✅ Оптимизация работает")
-end
-
-startOptimization()
--- ========== КОНЕЦ ОПТИМИЗАЦИИ ==========
-
 -- ========== ЗАЩИТА (ЛЕВАЯ ГРУППА) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
--- АНТИ ГРАБ (РАБОЧИЙ)
+-- АНТИ ГРАБ
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -216,62 +74,50 @@ local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
-local autoStruggleConn = nil
+local antiGrabActive = false
+local antiGrabConnection = nil
 
 DefenseGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
     Callback = function(Value)
+        antiGrabActive = Value
+        
+        if antiGrabConnection then
+            antiGrabConnection:Disconnect()
+            antiGrabConnection = nil
+        end
+        
         if Value then
-            if autoStruggleConn then
-                autoStruggleConn:Disconnect()
-            end
-            autoStruggleConn = RunService.Heartbeat:Connect(function()
-                local character = LocalPlayer.Character
-                if character and character:FindFirstChild("Head") then
-                    local head = character.Head
+            antiGrabConnection = RunService.Heartbeat:Connect(function()
+                local char = LocalPlayer.Character
+                if char and char:FindFirstChild("Head") then
+                    local head = char.Head
                     if head:FindFirstChild("PartOwner") then
-                        task.spawn(function()
-                            if Struggle then
-                                Struggle:FireServer(LocalPlayer)
+                        if Struggle then
+                            pcall(function() Struggle:FireServer(LocalPlayer) end)
+                        end
+                        for _, part in pairs(char:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                part.Anchored = true
                             end
-                            pcall(function()
-                                ReplicatedStorage.GameCorrectionEvents.StopAllVelocity:FireServer()
-                            end)
-                            for _, part in pairs(character:GetChildren()) do
-                                if part:IsA("BasePart") then
-                                    part.Anchored = true
-                                end
+                        end
+                        local held = LocalPlayer:FindFirstChild("IsHeld")
+                        while antiGrabActive and held and held.Value do
+                            task.wait()
+                        end
+                        for _, part in pairs(char:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                part.Anchored = false
                             end
-                            local held = LocalPlayer:FindFirstChild("IsHeld")
-                            while held and held.Value do
-                                task.wait()
-                            end
-                            for _, part in pairs(character:GetChildren()) do
-                                if part:IsA("BasePart") then
-                                    part.Anchored = false
-                                end
-                            end
-                        end)
+                        end
                     end
                 end
             end)
-        else
-            if autoStruggleConn then
-                autoStruggleConn:Disconnect()
-                autoStruggleConn = nil
-            end
-            local char = LocalPlayer.Character
-            if char then
-                for _, part in pairs(char:GetChildren()) do
-                    if part:IsA("BasePart") then
-                        part.Anchored = false
-                    end
-                end
-            end
         end
     end
 })
+-- ========== КОНЕЦ АНТИ ГРАБ ==========
 
 -- ========== АНТИ ЛАГ (ПРАВАЯ ГРУППА) ==========
 local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
@@ -295,6 +141,7 @@ local function setupAntiLag()
             v:Destroy()
         end
     end
+    print("✅ Анти Лаг включён")
 end
 
 AntiLagGroup:AddToggle("AntiLag", {
@@ -304,10 +151,43 @@ AntiLagGroup:AddToggle("AntiLag", {
         antiLagActive = Value
         if Value then
             setupAntiLag()
+        else
+            print("✅ Анти Лаг выключён")
         end
     end
 })
 -- ========== КОНЕЦ АНТИ ЛАГ ==========
+
+-- ========== ОПТИМИЗАЦИЯ (ТУМАН УБРАН) ==========
+task.spawn(function()
+    print("✅ Оптимизация запущена (туман убран)")
+    
+    -- Убираем туман сразу
+    local lighting = game:GetService("Lighting")
+    lighting.FogEnd = 0
+    lighting.FogStart = 0
+    lighting.GlobalShadows = false
+    lighting.Brightness = 1.5
+    
+    while true do
+        task.wait(10)
+        collectgarbage("collect")
+        
+        -- Повторно убираем туман
+        lighting.FogEnd = 0
+        lighting.FogStart = 0
+        
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") then
+                v.Enabled = false
+            end
+            if v:IsA("Beam") then
+                v:Destroy()
+            end
+        end
+    end
+end)
+-- ========== КОНЕЦ ОПТИМИЗАЦИИ ==========
 
 -- НАСТРОЙКИ
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
@@ -326,4 +206,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Анти Граб в защите | Анти Лаг справа | Оптимизация каждые 10 сек")
+print("✅ Меню загружено | Анти Граб и Анти Лаг во вкладке Defense")
