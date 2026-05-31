@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с анти грабом из Ragalic ]]
+-- [[ BROKEN SPAWN MENU - с Анти Лаг и Авто Анти Лаг ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -100,9 +100,10 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== АНТИ ГРАБ (ИЗ RAGALIC CLIENT) ==========
+-- ========== ЗАЩИТА ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
+-- АНТИ ГРАБ (из Ragalic)
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -167,7 +168,113 @@ DefenseGroup:AddToggle("AntiGrab", {
         end
     end
 })
--- ========== КОНЕЦ АНТИ ГРАБ ==========
+
+-- ========== АНТИ ЛАГ (отдельная группа справа) ==========
+local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
+
+local antiLagActive = false
+local packetLagActive = false
+local lastLagSource = false
+
+-- Функция Анти Лаг (отключает линии граба)
+local function setupAntiLag()
+    local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
+    if grabFolder then
+        local create = grabFolder:FindFirstChild("CreateGrabLine")
+        local extend = grabFolder:FindFirstChild("ExtendGrabLine")
+        if create and create:IsA("RemoteEvent") then
+            create:Destroy()
+        end
+        if extend and extend:IsA("RemoteEvent") then
+            extend:Destroy()
+        end
+    end
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("Beam") or v.Name:lower():find("line") then
+            v:Destroy()
+        end
+    end
+    print("✅ Анти Лаг: линии граба удалены")
+end
+
+-- Функция Авто Анти Лаг (детектор больших пакетов)
+local function startPacketLagDetector()
+    local RS = game:GetService("ReplicatedStorage")
+    local grabEvents = RS:FindFirstChild("GrabEvents")
+    if not grabEvents then return end
+    
+    local extendLine = grabEvents:FindFirstChild("ExtendGrabLine")
+    if not extendLine then return end
+    
+    local function GetSizeMB(StringLength)
+        return StringLength / (1024 * 1024)
+    end
+    
+    extendLine.OnClientEvent:Connect(function(arg1, data)
+        if not packetLagActive then return end
+        if typeof(data) == "string" and not lastLagSource then
+            lastLagSource = true
+            local StringLen = string.len(data)
+            if StringLen > 300 then
+                local SizeRounded = math.round(GetSizeMB(StringLen) * 1000) / 1000
+                Library:Notify({
+                    Title = "BROKEN SPAWN",
+                    Description = "⚠️ ПАКЕТНЫЙ ЛАГ ОБНАРУЖЕН!\nРазмер: " .. tostring(SizeRounded) .. " MB",
+                    Duration = 5
+                })
+                -- Автоматически включаем анти-лаг
+                if not antiLagActive then
+                    setupAntiLag()
+                    antiLagActive = true
+                    if Toggles.AntiLag then
+                        Toggles.AntiLag:SetValue(true)
+                    end
+                end
+            end
+            task.delay(5, function()
+                lastLagSource = false
+            end)
+        end
+    end)
+end
+
+-- Кнопка Анти Лаг
+AntiLagGroup:AddToggle("AntiLag", {
+    Text = "Анти Лаг",
+    Default = false,
+    Callback = function(Value)
+        antiLagActive = Value
+        if Value then
+            setupAntiLag()
+        end
+    end
+})
+
+-- Кнопка Авто Анти Лаг
+AntiLagGroup:AddToggle("AutoAntiLag", {
+    Text = "Авто Анти Лаг",
+    Default = false,
+    Callback = function(Value)
+        packetLagActive = Value
+        if Value then
+            startPacketLagDetector()
+            Library:Notify({
+                Title = "BROKEN SPAWN",
+                Description = "Авто Анти Лаг включён",
+                Duration = 3
+            })
+        else
+            Library:Notify({
+                Title = "BROKEN SPAWN",
+                Description = "Авто Анти Лаг выключён",
+                Duration = 3
+            })
+        end
+    end
+})
+
+print("✅ Анти Лаг и Авто Анти Лаг добавлены в правую группу")
+-- ========== КОНЕЦ АНТИ ЛАГ ==========
 
 -- НАСТРОЙКИ
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
@@ -186,4 +293,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб из Ragalic во вкладке Defense")
+print("✅ Меню загружено | 3 Вид во вкладке Players | Защита во вкладке Defense")
