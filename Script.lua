@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с Мгновенным возвратом (без заморозки) ]]
+-- [[ BROKEN SPAWN MENU - Мгновенный возврат (каждую миллисекунду) ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -100,7 +100,7 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== АНТИ ГРАБ (МГНОВЕННЫЙ ВОЗВРАТ, БЕЗ ЗАМОРОЗКИ) ==========
+-- ========== АНТИ ГРАБ (МГНОВЕННЫЙ ВОЗВРАТ КАЖДУЮ МИЛЛИСЕКУНДУ) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -114,44 +114,59 @@ local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 local antiGrabActive = false
 local savedCFrame = nil
 local returnConnection = nil
+local savedHRP = nil
+local savedCharacter = nil
 local lastPacketTime = 0
 local PACKET_DELAY = 0.08
 
--- МГНОВЕННЫЙ ВОЗВРАТ ТЕЛА (без заморозки)
+-- МГНОВЕННЫЙ ВОЗВРАТ (каждый кадр - миллисекунды)
 local function startReturn(character, hrp)
     if not hrp then return end
+    if returnConnection then return end
     
-    -- Сохраняем позицию ДО того как сдвинули
+    savedHRP = hrp
+    savedCharacter = character
     savedCFrame = hrp.CFrame
     
-    -- Запускаем постоянный возврат (каждый кадр)
-    if returnConnection then returnConnection:Disconnect() end
     returnConnection = RunService.Heartbeat:Connect(function()
         if not antiGrabActive then
-            if returnConnection then returnConnection:Disconnect() end
-            returnConnection = nil
+            stopReturn()
             return
         end
         
-        if hrp and hrp.Parent then
-            -- МГНОВЕННЫЙ ВОЗВРАТ на сохранённую позицию
-            if (hrp.Position - savedCFrame.Position).Magnitude > 0.001 then
-                hrp.CFrame = savedCFrame
-                hrp.Velocity = Vector3.zero
-                hrp.RotVelocity = Vector3.zero
-                hrp.AssemblyLinearVelocity = Vector3.zero
-                hrp.AssemblyAngularVelocity = Vector3.zero
-            end
-            
-            -- Также возвращаем все части тела
-            for _, part in pairs(character:GetDescendants()) do
-                if part:IsA("BasePart") and part ~= hrp then
-                    part.Velocity = Vector3.zero
-                    part.RotVelocity = Vector3.zero
-                    part.AssemblyLinearVelocity = Vector3.zero
-                    part.AssemblyAngularVelocity = Vector3.zero
+        -- Проверяем, что персонаж всё ещё в грабе или рэгдолле
+        local head = savedCharacter and savedCharacter:FindFirstChild("Head")
+        local hum = savedCharacter and savedCharacter:FindFirstChild("Humanoid")
+        local isRagdolled = hum and hum:FindFirstChild("Ragdolled") and hum.Ragdolled.Value
+        
+        local isGrabbed = head and head:FindFirstChild("PartOwner")
+        local isHeldNow = isHeld and isHeld.Value
+        
+        if (isGrabbed or isRagdolled or isHeldNow) then
+            -- ВОЗВРАТ НА МЕСТО
+            if savedHRP and savedHRP.Parent then
+                -- Возвращаем корневую часть
+                if (savedHRP.Position - savedCFrame.Position).Magnitude > 0.001 then
+                    savedHRP.CFrame = savedCFrame
+                    savedHRP.Velocity = Vector3.zero
+                    savedHRP.RotVelocity = Vector3.zero
+                    savedHRP.AssemblyLinearVelocity = Vector3.zero
+                    savedHRP.AssemblyAngularVelocity = Vector3.zero
+                end
+                
+                -- Возвращаем все части тела
+                for _, part in pairs(savedCharacter:GetDescendants()) do
+                    if part:IsA("BasePart") and part ~= savedHRP then
+                        part.Velocity = Vector3.zero
+                        part.RotVelocity = Vector3.zero
+                        part.AssemblyLinearVelocity = Vector3.zero
+                        part.AssemblyAngularVelocity = Vector3.zero
+                    end
                 end
             end
+        else
+            -- Граба нет - останавливаем возврат
+            stopReturn()
         end
     end)
 end
@@ -161,6 +176,9 @@ local function stopReturn()
         returnConnection:Disconnect()
         returnConnection = nil
     end
+    savedHRP = nil
+    savedCharacter = nil
+    savedCFrame = nil
 end
 
 -- БОРЬБА С ГРАБОМ
@@ -170,7 +188,6 @@ local function struggleLoop(head, hrp, character)
     lastPacketTime = 0
     
     while antiGrabActive and head and head:FindFirstChild("PartOwner") do
-        -- Отправляем Struggle
         if tick() - lastPacketTime >= PACKET_DELAY then
             lastPacketTime = tick()
             if Struggle then
@@ -178,7 +195,7 @@ local function struggleLoop(head, hrp, character)
             end
         end
         
-        -- Мгновенный возврат на место (каждую итерацию)
+        -- Мгновенный возврат на место
         if hrp and hrp.Parent and savedCFrame then
             if (hrp.Position - savedCFrame.Position).Magnitude > 0.001 then
                 hrp.CFrame = savedCFrame
@@ -189,9 +206,6 @@ local function struggleLoop(head, hrp, character)
         
         task.wait(0.005)
     end
-    
-    -- Отпустили - останавливаем возврат
-    stopReturn()
 end
 
 -- ОТСЛЕЖИВАНИЕ ГРАБА
@@ -200,6 +214,7 @@ local function setupAntiGrab(character)
     
     local head = character:FindFirstChild("Head")
     local hrp = character:FindFirstChild("HumanoidRootPart")
+    local hum = character:FindFirstChild("Humanoid")
     
     if not head or not hrp then return end
     
@@ -210,11 +225,14 @@ local function setupAntiGrab(character)
         if antiGrabConnections["IsHeld"] then
             antiGrabConnections["IsHeld"]:Disconnect()
         end
+        if antiGrabConnections["Ragdolled"] and hum then
+            pcall(function() antiGrabConnections["Ragdolled"]:Disconnect() end)
+        end
     end
     
     antiGrabConnections = antiGrabConnections or {}
     
-    -- При захвате - запускаем возврат и борьбу
+    -- При захвате
     antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
         if child.Name == "PartOwner" and antiGrabActive then
             startReturn(character, hrp)
@@ -222,6 +240,16 @@ local function setupAntiGrab(character)
         end
     end)
     
+    -- При рэгдолле
+    if hum then
+        antiGrabConnections["Ragdolled"] = hum:FindFirstChild("Ragdolled") and hum.Ragdolled.Changed:Connect(function()
+            if hum.Ragdolled.Value and antiGrabActive then
+                startReturn(character, hrp)
+            end
+        end)
+    end
+    
+    -- Через IsHeld
     if isHeld then
         antiGrabConnections["IsHeld"] = isHeld.Changed:Connect(function(held)
             if held and antiGrabActive then
@@ -246,7 +274,7 @@ local function setAntiGrab(enabled)
         if not antiGrabConnections["CharacterAdded"] then
             antiGrabConnections["CharacterAdded"] = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
         end
-        print("✅ Анти Граб ВКЛЮЧЁН (мгновенный возврат)")
+        print("✅ Анти Граб ВКЛЮЧЁН (мгновенный возврат, 60 раз/сек)")
     else
         if antiGrabConnections then
             for _, conn in pairs(antiGrabConnections) do
@@ -285,4 +313,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб во вкладке Defense (мгновенный возврат)")
+print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб во вкладке Defense")
