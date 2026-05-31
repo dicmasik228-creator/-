@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - Сохранение позиции при грабе ]]
+-- [[ BROKEN SPAWN MENU - с Анти Кик (Ресет) и Анти Грабом ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -100,7 +100,53 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== АНТИ ГРАБ (СОХРАНЕНИЕ ПОЗИЦИИ ПРИ ГРАБЕ) ==========
+-- ========== АНТИ КИК (РЕСЕТ) ==========
+local function setupAntiKickReset()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    
+    local GameNotify = ReplicatedStorage:FindFirstChild("GameCorrectionEvents") and ReplicatedStorage.GameCorrectionEvents:FindFirstChild("GameCorrectionsNotify")
+    
+    if not GameNotify then return end
+    
+    GameNotify.OnClientEvent:Connect(function(message)
+        if not antiKickResetActive then return end
+        
+        local kickMessages = {
+            "вы летите невозможным образом",
+            "вы были кикнуты",
+            "flying",
+            "exploiting",
+            "anticheat",
+            "kick",
+            "летаете",
+            "невозможным образом",
+            "вылет",
+            "кикнут"
+        }
+        
+        local msgLower = string.lower(tostring(message))
+        for _, kickMsg in ipairs(kickMessages) do
+            if string.find(msgLower, kickMsg) then
+                -- Ресет персонажа
+                local char = LocalPlayer.Character
+                if char then
+                    local hum = char:FindFirstChild("Humanoid")
+                    if hum then
+                        hum.Health = 0
+                        print("✅ Анти Кик: Ресет выполнен")
+                    end
+                end
+                break
+            end
+        end
+    end)
+end
+
+local antiKickResetActive = false
+
+-- ========== АНТИ ГРАБ (МАКСИМАЛЬНО БЫСТРЫЙ ВОЗВРАТ) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -119,26 +165,30 @@ local savedHRP = nil
 local savedCharacter = nil
 local lastPacketTime = 0
 local isCurrentlyGrabbed = false
+local returnTask = nil
 
 local PACKET_DELAY = 0.08
 
--- СОХРАНЕНИЕ ПОЗИЦИИ (my post)
+-- СОХРАНЕНИЕ ПОЗИЦИИ
 local function saveMyPost(hrp)
     if not hrp then return end
     savedCFrame = hrp.CFrame
     savedPosition = hrp.Position
-    print("✅ Позиция сохранена:", savedPosition)
 end
 
--- МГНОВЕННЫЙ ВОЗВРАТ НА СОХРАНЁННУЮ ПОЗИЦИЮ
+-- МАКСИМАЛЬНО БЫСТРЫЙ ВОЗВРАТ
 local function startReturn(character, hrp)
     if not hrp then return end
     
     savedHRP = hrp
     savedCharacter = character
     
-    -- Если уже запущен возврат, не создаём новый
-    if returnConnection then return end
+    if returnTask then return end
+    
+    if returnConnection then
+        returnConnection:Disconnect()
+        returnConnection = nil
+    end
     
     returnConnection = RunService.Heartbeat:Connect(function()
         if not antiGrabActive then
@@ -146,7 +196,6 @@ local function startReturn(character, hrp)
             return
         end
         
-        -- Проверяем, всё ещё в грабе или рэгдолле?
         local head = savedCharacter and savedCharacter:FindFirstChild("Head")
         local hum = savedCharacter and savedCharacter:FindFirstChild("Humanoid")
         local isRagdolled = hum and hum:FindFirstChild("Ragdolled") and hum.Ragdolled.Value
@@ -155,17 +204,13 @@ local function startReturn(character, hrp)
         
         if isGrabbed or isRagdolled or isHeldNow then
             isCurrentlyGrabbed = true
-            -- МГНОВЕННЫЙ ВОЗВРАТ на сохранённую позицию
             if savedHRP and savedHRP.Parent and savedCFrame then
-                if (savedHRP.Position - savedPosition).Magnitude > 0.001 then
-                    savedHRP.CFrame = savedCFrame
-                    savedHRP.Velocity = Vector3.zero
-                    savedHRP.RotVelocity = Vector3.zero
-                    savedHRP.AssemblyLinearVelocity = Vector3.zero
-                    savedHRP.AssemblyAngularVelocity = Vector3.zero
-                end
+                savedHRP.CFrame = savedCFrame
+                savedHRP.Velocity = Vector3.zero
+                savedHRP.RotVelocity = Vector3.zero
+                savedHRP.AssemblyLinearVelocity = Vector3.zero
+                savedHRP.AssemblyAngularVelocity = Vector3.zero
                 
-                -- Возвращаем все части тела
                 for _, part in pairs(savedCharacter:GetDescendants()) do
                     if part:IsA("BasePart") and part ~= savedHRP then
                         part.Velocity = Vector3.zero
@@ -176,12 +221,23 @@ local function startReturn(character, hrp)
                 end
             end
         else
-            -- Граба нет - останавливаем возврат
             if isCurrentlyGrabbed then
-                print("✅ Граб закончился, возврат остановлен")
                 isCurrentlyGrabbed = false
             end
             stopReturn()
+        end
+    end)
+    
+    if returnTask then task.cancel(returnTask) end
+    returnTask = task.spawn(function()
+        while returnConnection and antiGrabActive do
+            if savedHRP and savedHRP.Parent and savedCFrame then
+                savedHRP.CFrame = savedCFrame
+                savedHRP.Velocity = Vector3.zero
+                savedHRP.AssemblyLinearVelocity = Vector3.zero
+                savedHRP.AssemblyAngularVelocity = Vector3.zero
+            end
+            task.wait(0.001)
         end
     end)
 end
@@ -191,11 +247,14 @@ local function stopReturn()
         returnConnection:Disconnect()
         returnConnection = nil
     end
+    if returnTask then
+        task.cancel(returnTask)
+        returnTask = nil
+    end
     savedHRP = nil
     savedCharacter = nil
 end
 
--- БОРЬБА С ГРАБОМ
 local function struggleLoop(head, hrp, character)
     if not antiGrabActive then return end
     
@@ -209,20 +268,16 @@ local function struggleLoop(head, hrp, character)
             end
         end
         
-        -- Мгновенный возврат на сохранённую позицию
         if hrp and hrp.Parent and savedCFrame then
-            if (hrp.Position - savedPosition).Magnitude > 0.001 then
-                hrp.CFrame = savedCFrame
-                hrp.Velocity = Vector3.zero
-                hrp.RotVelocity = Vector3.zero
-            end
+            hrp.CFrame = savedCFrame
+            hrp.Velocity = Vector3.zero
+            hrp.RotVelocity = Vector3.zero
         end
         
-        task.wait(0.005)
+        task.wait(0.001)
     end
 end
 
--- ОТСЛЕЖИВАНИЕ ГРАБА
 local function setupAntiGrab(character)
     if not character then return end
     
@@ -246,33 +301,30 @@ local function setupAntiGrab(character)
     
     antiGrabConnections = antiGrabConnections or {}
     
-    -- При захвате - сохраняем позицию и запускаем возврат
     antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
         if child.Name == "PartOwner" and antiGrabActive then
-            saveMyPost(hrp)  -- СОХРАНЯЕМ ПОЗИЦИЮ
+            saveMyPost(hrp)
             startReturn(character, hrp)
             task.spawn(struggleLoop, head, hrp, character)
         end
     end)
     
-    -- При рэгдолле - тоже сохраняем и возвращаем
     if hum then
         local ragdolled = hum:FindFirstChild("Ragdolled")
         if ragdolled then
             antiGrabConnections["Ragdolled"] = ragdolled.Changed:Connect(function()
                 if ragdolled.Value and antiGrabActive then
-                    saveMyPost(hrp)  -- СОХРАНЯЕМ ПОЗИЦИЮ
+                    saveMyPost(hrp)
                     startReturn(character, hrp)
                 end
             end)
         end
     end
     
-    -- Через IsHeld
     if isHeld then
         antiGrabConnections["IsHeld"] = isHeld.Changed:Connect(function(held)
             if held and antiGrabActive then
-                saveMyPost(hrp)  -- СОХРАНЯЕМ ПОЗИЦИЮ
+                saveMyPost(hrp)
                 startReturn(character, hrp)
                 task.spawn(struggleLoop, head, hrp, character)
             end
@@ -294,7 +346,7 @@ local function setAntiGrab(enabled)
         if not antiGrabConnections["CharacterAdded"] then
             antiGrabConnections["CharacterAdded"] = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
         end
-        print("✅ Анти Граб ВКЛЮЧЁН (сохранение позиции при грабе)")
+        print("✅ Анти Граб ВКЛЮЧЁН")
     else
         if antiGrabConnections then
             for _, conn in pairs(antiGrabConnections) do
@@ -307,6 +359,7 @@ local function setAntiGrab(enabled)
     end
 end
 
+-- ========== КНОПКИ В ЗАЩИТУ ==========
 DefenseGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
@@ -314,7 +367,21 @@ DefenseGroup:AddToggle("AntiGrab", {
         setAntiGrab(Value)
     end
 })
--- ========== КОНЕЦ АНТИ ГРАБ ==========
+
+DefenseGroup:AddToggle("AntiKickReset", {
+    Text = "Анти Кик (Ресет)",
+    Default = false,
+    Callback = function(Value)
+        antiKickResetActive = Value
+        if Value then
+            setupAntiKickReset()
+            print("✅ Анти Кик (Ресет) ВКЛЮЧЁН")
+        else
+            print("✅ Анти Кик (Ресет) ВЫКЛЮЧЕН")
+        end
+    end
+})
+-- ========== КОНЕЦ ЗАЩИТЫ ==========
 
 -- НАСТРОЙКИ
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
@@ -333,4 +400,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | 3 Вид во вкладке Players | Анти Граб во вкладке Defense")
+print("✅ Меню загружено | 3 Вид во вкладке Players | Защита во вкладке Defense")
