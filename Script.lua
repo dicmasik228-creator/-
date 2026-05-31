@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с Анти Лаг и Авто Анти Лаг ]]
+-- [[ BROKEN SPAWN MENU - с оптимизацией (каждые 10 сек) ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -100,6 +100,120 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
+-- ========== ПЕРМАНЕНТНАЯ ОПТИМИЗАЦИЯ (КАЖДЫЕ 10 СЕКУНД) ==========
+local function startOptimization()
+    print("✅ Оптимизация запущена (каждые 10 секунд)")
+    
+    -- 1. ОТКЛЮЧАЕМ НЕНУЖНЫЕ ЭФФЕКТЫ В ЛАНДШАФТЕ
+    local function optimizeLighting()
+        local lighting = game:GetService("Lighting")
+        lighting.GlobalShadows = false
+        lighting.FogEnd = 1000
+        lighting.Brightness = 1.5
+        lighting.ClockTime = 14
+        lighting.Ambient = Color3.fromRGB(80, 80, 80)
+        lighting.OutdoorAmbient = Color3.fromRGB(80, 80, 80)
+        
+        for _, effect in ipairs(lighting:GetChildren()) do
+            if effect:IsA("BlurEffect") or effect:IsA("BloomEffect") or effect:IsA("SunRaysEffect") or effect:IsA("ColorCorrectionEffect") then
+                effect.Enabled = false
+            end
+        end
+    end
+    
+    -- 2. ОПТИМИЗАЦИЯ РАБОЧЕГО ПРОСТРАНСТВА
+    local function optimizeWorkspace()
+        workspace.Gravity = 196.2
+        workspace.FallenPartsDestroyHeight = -500
+        
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Fire") or v:IsA("Smoke") or v:IsA("Sparkles") then
+                v.Enabled = false
+            end
+            if v:IsA("Decal") then
+                v.Transparency = 1
+            end
+            if v:IsA("Beam") then
+                v:Destroy()
+            end
+        end
+    end
+    
+    -- 3. ОПТИМИЗАЦИЯ ИГРОКОВ
+    local function optimizePlayers()
+        for _, player in ipairs(game:GetService("Players"):GetPlayers()) do
+            if player.Character then
+                for _, part in ipairs(player.Character:GetDescendants()) do
+                    if part:IsA("ParticleEmitter") or part:IsA("Fire") or part:IsA("Smoke") then
+                        part.Enabled = false
+                    end
+                end
+            end
+        end
+    end
+    
+    -- 4. АВТОМАТИЧЕСКАЯ ОЧИСТКА ПАМЯТИ
+    local function garbageCollector()
+        collectgarbage("collect")
+        collectgarbage("step", 50)
+    end
+    
+    -- 5. УДАЛЕНИЕ ЛИШНИХ ОБЪЕКТОВ
+    local function cleanMisc()
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("Beam") or (v.Name and (v.Name:lower():find("line") or v.Name:lower():find("grab"))) then
+                v:Destroy()
+            end
+        end
+        
+        local rs = game:GetService("ReplicatedStorage")
+        for _, v in ipairs(rs:GetDescendants()) do
+            if v:IsA("ParticleEmitter") then
+                v.Enabled = false
+            end
+        end
+    end
+    
+    -- 6. ОПТИМИЗАЦИЯ ЗВУКОВ
+    local function optimizeSounds()
+        local soundService = game:GetService("SoundService")
+        soundService.Volume = 0.5
+        soundService.RespectFilteringEnabled = false
+    end
+    
+    -- ВЫПОЛНЯЕМ ОДНОРАЗОВЫЕ ОПТИМИЗАЦИИ
+    optimizeLighting()
+    optimizeWorkspace()
+    optimizeSounds()
+    
+    -- ЗАПУСКАЕМ ЦИКЛИЧЕСКУЮ ОЧИСТКУ (каждые 10 секунд)
+    task.spawn(function()
+        while true do
+            task.wait(10)  -- ← КАЖДЫЕ 10 СЕКУНД
+            garbageCollector()
+            cleanMisc()
+            optimizePlayers()
+        end
+    end)
+    
+    -- СЛЕДИМ ЗА НОВЫМИ ОБЪЕКТАМИ
+    workspace.DescendantAdded:Connect(function(obj)
+        task.wait(0.1)
+        if obj:IsA("ParticleEmitter") or obj:IsA("Fire") or obj:IsA("Smoke") then
+            obj.Enabled = false
+        end
+        if obj:IsA("Beam") or (obj.Name and obj.Name:lower():find("line")) then
+            obj:Destroy()
+        end
+    end)
+    
+    print("✅ Оптимизация полностью запущена (очистка каждые 10 сек)")
+end
+
+-- ЗАПУСКАЕМ ОПТИМИЗАЦИЮ СРАЗУ
+startOptimization()
+-- ========== КОНЕЦ ОПТИМИЗАЦИИ ==========
+
 -- ========== ЗАЩИТА (ЛЕВАЯ ГРУППА) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
@@ -173,10 +287,7 @@ DefenseGroup:AddToggle("AntiGrab", {
 local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
 
 local antiLagActive = false
-local packetLagActive = false
-local lastLagSource = false
 
--- Функция Анти Лаг
 local function setupAntiLag()
     local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
     if grabFolder then
@@ -196,48 +307,6 @@ local function setupAntiLag()
     end
 end
 
--- Функция Авто Анти Лаг
-local function startPacketLagDetector()
-    local RS = game:GetService("ReplicatedStorage")
-    local grabEvents = RS:FindFirstChild("GrabEvents")
-    if not grabEvents then return end
-    
-    local extendLine = grabEvents:FindFirstChild("ExtendGrabLine")
-    if not extendLine then return end
-    
-    local function GetSizeMB(StringLength)
-        return StringLength / (1024 * 1024)
-    end
-    
-    extendLine.OnClientEvent:Connect(function(arg1, data)
-        if not packetLagActive then return end
-        if typeof(data) == "string" and not lastLagSource then
-            lastLagSource = true
-            local StringLen = string.len(data)
-            if StringLen > 300 then
-                local SizeRounded = math.round(GetSizeMB(StringLen) * 1000) / 1000
-                Library:Notify({
-                    Title = "BROKEN SPAWN",
-                    Description = "⚠️ ПАКЕТНЫЙ ЛАГ!\nРазмер: " .. tostring(SizeRounded) .. " MB",
-                    Duration = 5
-                })
-                -- Автоматически включаем анти-лаг
-                if not antiLagActive then
-                    setupAntiLag()
-                    antiLagActive = true
-                    if Toggles.AntiLag then
-                        Toggles.AntiLag:SetValue(true)
-                    end
-                end
-            end
-            task.delay(5, function()
-                lastLagSource = false
-            end)
-        end
-    end)
-end
-
--- Кнопка Анти Лаг
 AntiLagGroup:AddToggle("AntiLag", {
     Text = "Анти Лаг",
     Default = false,
@@ -245,18 +314,6 @@ AntiLagGroup:AddToggle("AntiLag", {
         antiLagActive = Value
         if Value then
             setupAntiLag()
-        end
-    end
-})
-
--- Кнопка Авто Анти Лаг
-AntiLagGroup:AddToggle("AutoAntiLag", {
-    Text = "Авто Анти Лаг",
-    Default = false,
-    Callback = function(Value)
-        packetLagActive = Value
-        if Value then
-            startPacketLagDetector()
         end
     end
 })
@@ -279,4 +336,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Анти Лаг справа во вкладке Defense")
+print("✅ Меню загружено | Оптимизация каждые 10 секунд")
