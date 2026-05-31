@@ -98,6 +98,104 @@ PlayersGroup:AddToggle("SpeedToggle", {
     end
 })
 -- ========== КОНЕЦ УСКОРЕНИЯ ==========
+
+-- ========== СИЛА ПРЫЖКА (ВКЛЮЧАТЕЛЬ/ВЫКЛЮЧАТЕЛЬ) ==========
+local jumpActive = false
+local jumpPowerValue = 50
+local originalJumpPower = nil
+
+local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
+    Text = "Сила прыжка",
+    Default = 50,
+    Min = 0,
+    Max = 500,
+    Rounding = 0,
+    Callback = function(Value)
+        jumpPowerValue = Value
+        if jumpActive then
+            local char = game.Players.LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid.JumpPower = jumpPowerValue
+            end
+        end
+    end
+})
+
+local function applyJumpPower()
+    local char = game.Players.LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.JumpPower = jumpPowerValue
+        Library:Notify({
+            Title = "BROKEN SPAWN",
+            Description = "Сила прыжка: " .. jumpPowerValue,
+            Duration = 2
+        })
+    end
+end
+
+local function resetJumpPower()
+    local char = game.Players.LocalPlayer.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.JumpPower = 50
+        Library:Notify({
+            Title = "BROKEN SPAWN",
+            Description = "Сила прыжка сброшена до 50",
+            Duration = 2
+        })
+    end
+end
+
+PlayersGroup:AddToggle("JumpToggle", {
+    Text = "Увеличенный прыжок",
+    Default = false,
+    Callback = function(Value)
+        jumpActive = Value
+        if Value then
+            applyJumpPower()
+        else
+            resetJumpPower()
+        end
+    end
+})
+-- ========== КОНЕЦ СИЛЫ ПРЫЖКА ==========
+
+-- ========== БЕСКОНЕЧНЫЙ ПРЫЖОК ==========
+local infiniteJumpActive = false
+local infiniteJumpConnection = nil
+
+local function startInfiniteJump()
+    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
+    infiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+        if infiniteJumpActive then
+            local char = game.Players.LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end)
+end
+
+local function stopInfiniteJump()
+    if infiniteJumpConnection then
+        infiniteJumpConnection:Disconnect()
+        infiniteJumpConnection = nil
+    end
+end
+
+PlayersGroup:AddToggle("InfiniteJump", {
+    Text = "Бесконечный прыжок",
+    Default = false,
+    Callback = function(Value)
+        infiniteJumpActive = Value
+        if Value then
+            startInfiniteJump()
+        else
+            stopInfiniteJump()
+        end
+    end
+})
+-- ========== КОНЕЦ БЕСКОНЕЧНОГО ПРЫЖКА ==========
+
 -- ========== КОНЕЦ ВКЛАДКИ PLAYERS ==========
 
 -- ========== ВКЛАДКА DEFENSE (ЗАЩИТА) ==========
@@ -243,4 +341,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 -- ========== КОНЕЦ ВКЛАДКИ SETTINGS ==========
 
-print("✅ Меню загружено | Ускорение (0-10000) толкает вперёд")
+print("✅ Меню загружено | Ускорение толкает вперёд | Сила прыжка и бесконечный прыжок добавлены")
