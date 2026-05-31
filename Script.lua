@@ -100,10 +100,10 @@ PlayersGroup:AddToggle("ThirdPerson", {
 })
 -- ========== КОНЕЦ 3 ВИД ==========
 
--- ========== ЗАЩИТА ==========
+-- ========== ЗАЩИТА (ЛЕВАЯ ГРУППА) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
--- АНТИ ГРАБ (из Ragalic)
+-- АНТИ ГРАБ
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -169,14 +169,14 @@ DefenseGroup:AddToggle("AntiGrab", {
     end
 })
 
--- ========== АНТИ ЛАГ (отдельная группа справа) ==========
+-- ========== АНТИ ЛАГ (ПРАВАЯ ГРУППА) ==========
 local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
 
 local antiLagActive = false
 local packetLagActive = false
 local lastLagSource = false
 
--- Функция Анти Лаг (отключает линии граба)
+-- Функция Анти Лаг
 local function setupAntiLag()
     local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
     if grabFolder then
@@ -190,14 +190,13 @@ local function setupAntiLag()
         end
     end
     for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Beam") or v.Name:lower():find("line") then
+        if v:IsA("Beam") or (v.Name and v.Name:lower():find("line")) then
             v:Destroy()
         end
     end
-    print("✅ Анти Лаг: линии граба удалены")
 end
 
--- Функция Авто Анти Лаг (детектор больших пакетов)
+-- Функция Авто Анти Лаг
 local function startPacketLagDetector()
     local RS = game:GetService("ReplicatedStorage")
     local grabEvents = RS:FindFirstChild("GrabEvents")
@@ -219,7 +218,7 @@ local function startPacketLagDetector()
                 local SizeRounded = math.round(GetSizeMB(StringLen) * 1000) / 1000
                 Library:Notify({
                     Title = "BROKEN SPAWN",
-                    Description = "⚠️ ПАКЕТНЫЙ ЛАГ ОБНАРУЖЕН!\nРазмер: " .. tostring(SizeRounded) .. " MB",
+                    Description = "⚠️ ПАКЕТНЫЙ ЛАГ!\nРазмер: " .. tostring(SizeRounded) .. " MB",
                     Duration = 5
                 })
                 -- Автоматически включаем анти-лаг
@@ -258,22 +257,9 @@ AntiLagGroup:AddToggle("AutoAntiLag", {
         packetLagActive = Value
         if Value then
             startPacketLagDetector()
-            Library:Notify({
-                Title = "BROKEN SPAWN",
-                Description = "Авто Анти Лаг включён",
-                Duration = 3
-            })
-        else
-            Library:Notify({
-                Title = "BROKEN SPAWN",
-                Description = "Авто Анти Лаг выключён",
-                Duration = 3
-            })
         end
     end
 })
-
-print("✅ Анти Лаг и Авто Анти Лаг добавлены в правую группу")
 -- ========== КОНЕЦ АНТИ ЛАГ ==========
 
 -- НАСТРОЙКИ
@@ -293,4 +279,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | 3 Вид во вкладке Players | Защита во вкладке Defense")
+print("✅ Меню загружено | Анти Лаг справа во вкладке Defense")
