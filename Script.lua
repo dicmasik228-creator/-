@@ -1,4 +1,4 @@
--- [[ BROKEN SPAWN MENU - с исправленным Анти Грабом ]]
+-- [[ BROKEN SPAWN MENU - с Анти Грабом (пакеты 0.08 сек) ]]
 
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
@@ -32,7 +32,7 @@ addEmptyGroup(Tabs.Target, "Target")
 addEmptyGroup(Tabs.TargetBlob, "Target Blob")
 addEmptyGroup(Tabs.Smile, "Smile")
 
--- ========== АНТИ ГРАБ ==========
+-- ========== АНТИ ГРАБ (пакеты 0.08 сек) ==========
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local Players = game:GetService("Players")
@@ -50,8 +50,9 @@ local savedPosition = nil
 local savedCFrame = nil
 local freezeConnection = nil
 local originalWalkSpeed = nil
+local lastPacketTime = 0
 
-local PACKET_DELAY = 0.08
+local PACKET_DELAY = 0.08  -- ПАКЕТЫ КАЖДЫЕ 0.08 СЕКУНД
 
 local function fullFreeze(character, hrp, hum)
     if not hrp or not hum then return end
@@ -65,29 +66,42 @@ local function fullFreeze(character, hrp, hum)
     hrp.Anchored = true
     hrp.Velocity = Vector3.zero
     hrp.RotVelocity = Vector3.zero
-    hum.WalkSpeed = 0
-    hum.JumpPower = 0
-    hum.PlatformStand = true
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
     
     for _, part in pairs(character:GetDescendants()) do
         if part:IsA("BasePart") then
             part.Velocity = Vector3.zero
             part.RotVelocity = Vector3.zero
-            if part.Name ~= "HumanoidRootPart" then
-                part.Anchored = true
-            end
+            part.AssemblyLinearVelocity = Vector3.zero
+            part.AssemblyAngularVelocity = Vector3.zero
+            part.Anchored = true
         end
     end
+    
+    hum.WalkSpeed = 0
+    hum.JumpPower = 0
+    hum.PlatformStand = true
+    hum.AutoRotate = false
     
     local bp = hrp:FindFirstChild("AntiGrabBP")
     if bp then bp:Destroy() end
     bp = Instance.new("BodyPosition")
     bp.Name = "AntiGrabBP"
     bp.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    bp.D = 2000
-    bp.P = 100000
+    bp.D = 5000
+    bp.P = 200000
     bp.Position = savedPosition
     bp.Parent = hrp
+    
+    local bg = hrp:FindFirstChild("AntiGrabBG")
+    if bg then bg:Destroy() end
+    bg = Instance.new("BodyGyro")
+    bg.Name = "AntiGrabBG"
+    bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bg.P = 200000
+    bg.CFrame = savedCFrame
+    bg.Parent = hrp
     
     if freezeConnection then freezeConnection:Disconnect() end
     freezeConnection = RunService.Heartbeat:Connect(function()
@@ -96,69 +110,110 @@ local function fullFreeze(character, hrp, hum)
             freezeConnection = nil
             return
         end
-        if hrp and hrp.Parent then
-            if (hrp.Position - savedPosition).Magnitude > 0.1 then
+        
+        if hrp and hrp.Parent and hum and hum.Parent then
+            local dist = (hrp.Position - savedPosition).Magnitude
+            if dist > 0.05 then
                 hrp.CFrame = savedCFrame
+                hrp.Velocity = Vector3.zero
+                hrp.AssemblyLinearVelocity = Vector3.zero
+                if bp then bp.Position = savedPosition end
             end
-            hrp.Velocity = Vector3.zero
-            hrp.RotVelocity = Vector3.zero
+            
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Velocity = Vector3.zero
+                    part.RotVelocity = Vector3.zero
+                    part.AssemblyLinearVelocity = Vector3.zero
+                    part.AssemblyAngularVelocity = Vector3.zero
+                end
+            end
+            
             if bp then bp.Position = savedPosition end
+            if bg then bg.CFrame = savedCFrame end
+            if hum.Sit then hum.Sit = false end
+            hum.PlatformStand = true
         end
     end)
 end
 
 local function fullUnfreeze(character, hrp, hum)
     isGrabbed = false
+    
     if freezeConnection then
         freezeConnection:Disconnect()
         freezeConnection = nil
     end
+    
     if hrp then
         hrp.Anchored = false
         local bp = hrp:FindFirstChild("AntiGrabBP")
         if bp then bp:Destroy() end
+        local bg = hrp:FindFirstChild("AntiGrabBG")
+        if bg then bg:Destroy() end
         hrp.Velocity = Vector3.zero
         hrp.RotVelocity = Vector3.zero
-        if savedCFrame then hrp.CFrame = savedCFrame end
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+        if savedCFrame then
+            hrp.CFrame = savedCFrame
+        end
     end
+    
     if character then
         for _, part in pairs(character:GetDescendants()) do
-            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+            if part:IsA("BasePart") then
                 part.Anchored = false
                 part.Velocity = Vector3.zero
                 part.RotVelocity = Vector3.zero
+                part.AssemblyLinearVelocity = Vector3.zero
+                part.AssemblyAngularVelocity = Vector3.zero
             end
         end
     end
+    
     if hum then
         hum.WalkSpeed = originalWalkSpeed or 16
         hum.JumpPower = 50
         hum.PlatformStand = false
+        hum.AutoRotate = true
+        hum.Sit = false
     end
 end
 
 local function struggleLoop(head, hrp, character, hum)
     if not antiGrabActive then return end
-    local lastPacketTime = 0
+    
+    lastPacketTime = 0
+    
     while antiGrabActive and isGrabbed and head and head:FindFirstChild("PartOwner") do
         if tick() - lastPacketTime >= PACKET_DELAY then
             lastPacketTime = tick()
-            if Struggle then pcall(function() Struggle:FireServer(LocalPlayer) end) end
+            if Struggle then
+                pcall(function() Struggle:FireServer(LocalPlayer) end)
+            end
         end
+        
         if hrp then
             hrp.Velocity = Vector3.zero
             hrp.RotVelocity = Vector3.zero
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
         end
-        task.wait(0.1)
+        
+        task.wait(0.02)
     end
+    
     fullUnfreeze(character, hrp, hum)
 end
 
 local function setupAntiGrab(character)
     if not character then return end
+    
     local head = character:FindFirstChild("Head")
     local hrp = character:FindFirstChild("HumanoidRootPart")
     local hum = character:FindFirstChild("Humanoid")
+    
     if not head or not hrp or not hum then return end
     
     if antiGrabConnections["PartOwner"] then
@@ -168,6 +223,10 @@ local function setupAntiGrab(character)
     if antiGrabConnections["IsHeld"] then
         antiGrabConnections["IsHeld"]:Disconnect()
         antiGrabConnections["IsHeld"] = nil
+    end
+    if antiGrabConnections["CharacterAdded"] then
+        antiGrabConnections["CharacterAdded"]:Disconnect()
+        antiGrabConnections["CharacterAdded"] = nil
     end
     
     antiGrabConnections["PartOwner"] = head.ChildAdded:Connect(function(child)
@@ -194,26 +253,31 @@ end
 
 local function setAntiGrab(enabled)
     antiGrabActive = enabled
+    
     if enabled then
         local char = LocalPlayer.Character
         if char then setupAntiGrab(char) end
         if not antiGrabConnections["CharacterAdded"] then
             antiGrabConnections["CharacterAdded"] = LocalPlayer.CharacterAdded:Connect(onCharacterAdded)
         end
+        print("✅ Анти Граб ВКЛЮЧЁН (пакеты 0.08 сек)")
     else
         for _, conn in pairs(antiGrabConnections) do
             pcall(function() conn:Disconnect() end)
         end
         antiGrabConnections = {}
+        
         local char = LocalPlayer.Character
         if char then
             local hrp = char:FindFirstChild("HumanoidRootPart")
             local hum = char:FindFirstChild("Humanoid")
             fullUnfreeze(char, hrp, hum)
         end
+        print("✅ Анти Граб ВЫКЛЮЧЕН")
     end
 end
 
+-- КНОПКА В МЕНЮ
 DefenseGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
@@ -240,4 +304,4 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Анти Граб (пакеты 0.8 сек) во вкладке Defense")
+print("✅ Меню загружено | Анти Граб (пакеты 0.08 сек) во вкладке Defense")
