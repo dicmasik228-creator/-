@@ -313,22 +313,114 @@ local function startLag()
         if packetsPerFrame > 150 then packetsPerFrame = 150 end
         
         -- Спамим для всех игроков, кроме себя
-        for _, plr in ipairs(players:GetPlayers()) do
-            if plr ~= localPlayer and plr.Character then
-                local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    for i = 1, packetsPerFrame do
-                        pcall(function()
-                            createLine:FireServer(hrp, hrp.CFrame)
-                            setOwner:FireServer(hrp, hrp.CFrame)
-                        end)
-                    end
-                end
+        -- ========== ЛАГ ЛИНИЯМИ (В РУКЕ) ==========
+local lagActive = false
+local lagPower = 1000
+local lagConnection = nil
+local lagHandlePart = nil
+local lagHandPart = nil
+
+local lagSlider = SmileGroup:AddSlider("LagPower", {
+    Text = "Мощность лага",
+    Default = 1000,
+    Min = 10,
+    Max = 10000,
+    Rounding = 0,
+    Callback = function(Value)
+        lagPower = Value
+    end
+})
+
+local function createHandlePart()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    
+    -- Находим правую руку или создаём временную часть
+    local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
+    if not rightArm then return nil end
+    
+    -- Создаём невидимую часть в руке
+    local handle = Instance.new("Part")
+    handle.Name = "LagHandle"
+    handle.Size = Vector3.new(0.5, 0.5, 0.5)
+    handle.Transparency = 1
+    handle.CanCollide = false
+    handle.Anchored = false
+    handle.Parent = rightArm
+    handle.CFrame = rightArm.CFrame * CFrame.new(0, -0.5, 0)
+    
+    -- Прикрепляем к руке
+    local weld = Instance.new("WeldConstraint")
+    weld.Part0 = rightArm
+    weld.Part1 = handle
+    weld.Parent = handle
+    
+    return handle
+end
+
+local function startLag()
+    if lagConnection then lagConnection:Disconnect() end
+    
+    local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+    if not grabEvents then
+        Library:Notify({Title = "Ошибка", Description = "GrabEvents не найден", Duration = 3})
+        return
+    end
+    
+    local createLine = grabEvents:FindFirstChild("CreateGrabLine")
+    local extendLine = grabEvents:FindFirstChild("ExtendGrabLine")
+    
+    if not createLine or not extendLine then
+        Library:Notify({Title = "Ошибка", Description = "События граба не найдены", Duration = 3})
+        return
+    end
+    
+    -- Создаём часть в руке
+    lagHandlePart = createHandlePart()
+    if not lagHandlePart then
+        Library:Notify({Title = "Ошибка", Description = "Не удалось создать часть в руке", Duration = 3})
+        return
+    end
+    
+    -- Находим всех игроков (кроме себя)
+    local players = game:GetService("Players")
+    local localPlayer = players.LocalPlayer
+    local targets = {}
+    
+    for _, plr in ipairs(players:GetPlayers()) do
+        if plr ~= localPlayer and plr.Character then
+            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                table.insert(targets, {player = plr, hrp = hrp})
+            end
+        end
+    end
+    
+    if #targets == 0 then
+        Library:Notify({Title = "Ошибка", Description = "Нет целей для лага", Duration = 3})
+        return
+    end
+    
+    lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not lagActive then return end
+        
+        local packetsPerFrame = math.floor(lagPower / 60)
+        if packetsPerFrame < 1 then packetsPerFrame = 1 end
+        if packetsPerFrame > 150 then packetsPerFrame = 150 end
+        
+        -- Спамим линиями граба для всех целей
+        for _, target in ipairs(targets) do
+            for i = 1, packetsPerFrame do
+                pcall(function()
+                    -- Создаём линию граба от руки к цели
+                    createLine:FireServer(lagHandlePart, target.hrp.Position)
+                    extendLine:FireServer(target.hrp, lagHandlePart.Position)
+                end)
             end
         end
     end)
     
-    Library:Notify({Title = "Лаг сервера", Description = "Включён (" .. lagPower .. " пакетов/сек)", Duration = 3})
+    Library:Notify({Title = "Лаг сервера", Description = "Включён (" .. lagPower .. " линий/сек)", Duration = 3})
 end
 
 local function stopLag()
@@ -336,6 +428,13 @@ local function stopLag()
         lagConnection:Disconnect()
         lagConnection = nil
     end
+    
+    -- Удаляем часть из руки
+    if lagHandlePart then
+        pcall(function() lagHandlePart:Destroy() end)
+        lagHandlePart = nil
+    end
+    
     Library:Notify({Title = "Лаг сервера", Description = "Выключен", Duration = 2})
 end
 
