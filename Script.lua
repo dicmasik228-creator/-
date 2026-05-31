@@ -269,16 +269,16 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА ==========
+-- ========== ЛАГ СЕРВЕРА (ИСПРАВЛЕННЫЙ) ==========
 local lagActive = false
-local lagPower = 1000
+local lagPower = 100
 local lagConnection = nil
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
-    Default = 1000,
+    Default = 100,
     Min = 10,
-    Max = 10000,
+    Max = 500,
     Rounding = 0,
     Callback = function(Value)
         lagPower = Value
@@ -286,29 +286,28 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 })
 
 local function startLag()
-    if lagConnection then lagConnection:Disconnect() end
+    if lagConnection then 
+        lagConnection:Disconnect() 
+        lagConnection = nil
+    end
     
-    local stopVelocity = ReplicatedStorage:FindFirstChild("GameCorrectionEvents") and ReplicatedStorage.GameCorrectionEvents:FindFirstChild("StopAllVelocity")
-    if not stopVelocity then
-        Library:Notify({Title = "Ошибка", Description = "StopAllVelocity не найден", Duration = 3})
+    local extendLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("ExtendGrabLine")
+    if not extendLine then
+        Library:Notify({Title = "Ошибка", Description = "ExtendGrabLine не найден", Duration = 3})
         return
     end
     
     lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if not lagActive then return end
-        
-        local packetsPerFrame = math.floor(lagPower / 60)
-        if packetsPerFrame < 1 then packetsPerFrame = 1 end
-        if packetsPerFrame > 300 then packetsPerFrame = 300 end
-        
-        for i = 1, packetsPerFrame do
-            pcall(function()
-                stopVelocity:FireServer()
-            end)
+        if lagActive then
+            for i = 1, lagPower do
+                pcall(function()
+                    extendLine:FireServer(string.rep("A", 500))
+                end)
+            end
         end
     end)
     
-    Library:Notify({Title = "Лаг сервера", Description = "Включён (" .. lagPower .. " запросов/сек)", Duration = 3})
+    Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. lagPower .. ")", Duration = 3})
 end
 
 local function stopLag()
@@ -324,7 +323,11 @@ SmileGroup:AddToggle("LagToggle", {
     Default = false,
     Callback = function(Value)
         lagActive = Value
-        if Value then startLag() else stopLag() end
+        if Value then
+            startLag()
+        else
+            stopLag()
+        end
     end
 })
 
