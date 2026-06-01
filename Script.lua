@@ -269,7 +269,14 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (СТИЛЬ RESONANCE) ==========
+-- ========== ЛАГ СЕРВЕРА (БЕЗ ПИНГА ДЛЯ ТЕБЯ) ==========
+-- Отключаем обработку Look на клиенте
+local lookEvent = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Look")
+if lookEvent then
+    lookEvent.OnClientEvent = function() end
+    print("✅ Look event отключён")
+end
+
 local lagActive = false
 local lagPower = 30
 local lagConnection = nil
@@ -323,6 +330,7 @@ SmileGroup:AddToggle("LagToggle", {
         lagActive = Value
         if Value then startLag() else stopLag() end
     end
+})
 })
 
 task.spawn(function()
