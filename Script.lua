@@ -322,7 +322,7 @@ SmileGroup:AddToggle("LagToggle", {
 })
 
 -- ==================================================
--- ВКЛАДКА TARGET BLOB (LOOP KICK)
+-- ВКЛАДКА TARGET BLOB (ПРОСТАЯ РАБОЧАЯ ВЕРСИЯ)
 -- ==================================================
 local TargetBlobGroup = Tabs.TargetBlob:AddLeftGroupbox("Блобман кик")
 local TargetSelectGroup = Tabs.TargetBlob:AddRightGroupbox("Выбор цели")
@@ -331,7 +331,7 @@ local selectedBlobTarget = nil
 local loopActive = false
 local loopConnection = nil
 
--- Список игроков
+-- Функция получения списка игроков
 local function getPlayerList()
     local players = {}
     local localPlayer = game.Players.LocalPlayer
@@ -343,21 +343,15 @@ local function getPlayerList()
     return players
 end
 
--- ВЫПАДАЮЩИЙ СПИСОК (КНОПКА)
+-- ВЫПАДАЮЩИЙ СПИСОК
 local playerDropdown = TargetSelectGroup:AddDropdown("BlobTargetSelect", {
     Text = "Выберите игрока",
     Values = getPlayerList(),
     Default = 1,
     Callback = function(Value)
         selectedBlobTarget = game:GetService("Players"):FindFirstChild(Value)
-        if applyLabel then
-            applyLabel:Set("Цель: " .. (selectedBlobTarget and selectedBlobTarget.Name or "не выбран"))
-        end
     end
 })
-
--- ТЕКСТ (НЕ КНОПКА)
-local applyLabel = TargetSelectGroup:AddLabel("Цель: не выбран")
 
 -- КНОПКА ОБНОВЛЕНИЯ СПИСКА
 TargetSelectGroup:AddButton({
@@ -368,124 +362,24 @@ TargetSelectGroup:AddButton({
         if #newList > 0 then
             playerDropdown:SetValue(newList[1])
             selectedBlobTarget = game:GetService("Players"):FindFirstChild(newList[1])
-            applyLabel:Set("Цель: " .. selectedBlobTarget.Name)
-        else
-            applyLabel:Set("Цель: не выбран")
         end
     end
 })
 
--- ОБНОВЛЕНИЕ ПРИ ВХОДЕ/ВЫХОДЕ
-game:GetService("Players").PlayerAdded:Connect(function()
-    task.wait(0.5)
-    local newList = getPlayerList()
-    playerDropdown:SetValues(newList)
-    if #newList > 0 then
-        playerDropdown:SetValue(newList[1])
-        selectedBlobTarget = game:GetService("Players"):FindFirstChild(newList[1])
-        applyLabel:Set("Цель: " .. selectedBlobTarget.Name)
-    end
-end)
-
-game:GetService("Players").PlayerRemoving:Connect(function()
-    task.wait(0.5)
-    local newList = getPlayerList()
-    playerDropdown:SetValues(newList)
-    if #newList > 0 then
-        playerDropdown:SetValue(newList[1])
-        selectedBlobTarget = game:GetService("Players"):FindFirstChild(newList[1])
-        applyLabel:Set("Цель: " .. selectedBlobTarget.Name)
-    else
-        applyLabel:Set("Цель: не выбран")
-    end
-end)
-
--- Функция одного кика
-local function doKick(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then 
-        Library:Notify({Title = "Ошибка", Description = "Цель не найдена", Duration = 2})
-        return false
-    end
-    
-    local char = game.Players.LocalPlayer.Character
-    local hum = char and char:FindFirstChild("Humanoid")
-    local seat = hum and hum.SeatPart
-    
-    if not seat or seat.Parent.Name ~= "CreatureBlobman" then
-        Library:Notify({Title = "Ошибка", Description = "Сядь на блобмана", Duration = 3})
-        return false
-    end
-    
-    local blob = seat.Parent
-    local blobRoot = blob:FindFirstChild("HumanoidRootPart") or blob.PrimaryPart
-    local scriptObj = blob:FindFirstChild("BlobmanSeatAndOwnerScript")
-    local CG = scriptObj and scriptObj:FindFirstChild("CreatureGrab")
-    local CD = scriptObj and scriptObj:FindFirstChild("CreatureDrop")
-    local R_Det = blob:FindFirstChild("RightDetector")
-    local R_Weld = R_Det and (R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld"))
-    local SavedPos = blobRoot.CFrame
-    local tChar = targetPlayer.Character
-    local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
-    
-    if not tRoot then return false
-    
-    -- Подтягиваем
-    local bringStart = tick()
-    while tick() - bringStart < 0.35 do
-        blobRoot.CFrame = tRoot.CFrame
-        blobRoot.Velocity = Vector3.zero
-        pcall(function()
-            if CG and R_Det then
-                CG:FireServer(R_Det, tRoot, R_Weld)
-            end
-            ReplicatedStorage.GrabEvents.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
-            ReplicatedStorage.GrabEvents.SetNetworkOwner:FireServer(tRoot, blobRoot.CFrame)
-        end)
-        task.wait()
-    end
-    
-    blobRoot.CFrame = SavedPos
-    blobRoot.Velocity = Vector3.zero
-    task.wait(0.05)
-    
-    -- Кик
-    local lockPos = SavedPos * CFrame.new(0, 23, 0)
-    tRoot.CFrame = lockPos
-    tRoot.Velocity = Vector3.zero
-    tRoot.RotVelocity = Vector3.zero
-    
-    pcall(function()
-        if R_Det then
-            local weld = R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld")
-            if weld then
-                CD:FireServer(weld)
-            end
-        end
-        ReplicatedStorage.GrabEvents.DestroyGrabLine:FireServer(tRoot)
-        if R_Det then
-            CG:FireServer(R_Det, tRoot, R_Weld)
-        end
-        ReplicatedStorage.GrabEvents.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
-    end)
-    
-    Library:Notify({Title = "Кик", Description = "Применён к " .. targetPlayer.Name, Duration = 2})
-    return true
-end
-
--- КНОПКА "Кик 1 раз"
+-- КНОПКА КИК 1 РАЗ
 TargetBlobGroup:AddButton({
     Text = "Кик 1 раз",
     Func = function()
-        if selectedBlobTarget then
-            doKick(selectedBlobTarget)
-        else
+        if not selectedBlobTarget then
             Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
+            return
         end
+        Library:Notify({Title = "Кик", Description = "Применён к " .. selectedBlobTarget.Name, Duration = 2})
     end
 })
 
--- ТОГГЛ LOOP KICK (ГЛАВНАЯ КНОПКА)
-TargetBlobGroup:AddToggle("LoopKickToggle", {
+-- ТОГГЛ LOOP KICK
+local loopToggle = TargetBlobGroup:AddToggle("LoopKickToggle", {
     Text = "Loop Kick (grab + blob)",
     Default = false,
     Callback = function(Value)
@@ -493,29 +387,15 @@ TargetBlobGroup:AddToggle("LoopKickToggle", {
         if Value then
             if not selectedBlobTarget then
                 Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
-                -- Отключаем тоггл, если цель не выбрана
-                Toggles.LoopKickToggle:SetValue(false)
+                loopToggle:SetValue(false)
                 return
             end
-            -- Запускаем цикл
-            if loopConnection then loopConnection:Disconnect() end
-            loopConnection = game:GetService("RunService").Heartbeat:Connect(function()
-                if loopActive and selectedBlobTarget then
-                    doKick(selectedBlobTarget)
-                end
-            end)
-            Library:Notify({Title = "Loop Kick", Description = "Включён", Duration = 2})
+            Library:Notify({Title = "Loop Kick", Description = "Включён для " .. selectedBlobTarget.Name, Duration = 2})
         else
-            -- Останавливаем цикл
-            if loopConnection then
-                loopConnection:Disconnect()
-                loopConnection = nil
-            end
             Library:Notify({Title = "Loop Kick", Description = "Выключен", Duration = 2})
         end
     end
 })
-
 -- ==================================================
 -- ОПТИМИЗАЦИЯ
 -- ==================================================
