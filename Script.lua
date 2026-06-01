@@ -321,84 +321,6 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
--- ==================================================
--- ВКЛАДКА TARGET BLOB (ПРОСТАЯ РАБОЧАЯ ВЕРСИЯ)
--- ==================================================
-local TargetBlobGroup = Tabs.TargetBlob:AddLeftGroupbox("Блобман кик")
-local TargetSelectGroup = Tabs.TargetBlob:AddRightGroupbox("Выбор цели")
-
-local selectedBlobTarget = nil
-local loopActive = false
-local loopConnection = nil
-
--- Функция получения списка игроков
-local function getPlayerList()
-    local players = {}
-    local localPlayer = game.Players.LocalPlayer
-    for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
-        if plr ~= localPlayer then
-            table.insert(players, plr.Name)
-        end
-    end
-    return players
-end
-
--- ВЫПАДАЮЩИЙ СПИСОК
-local playerDropdown = TargetSelectGroup:AddDropdown("BlobTargetSelect", {
-    Text = "Выберите игрока",
-    Values = getPlayerList(),
-    Default = 1,
-    Callback = function(Value)
-        selectedBlobTarget = game:GetService("Players"):FindFirstChild(Value)
-    end
-})
-
--- КНОПКА ОБНОВЛЕНИЯ СПИСКА
-TargetSelectGroup:AddButton({
-    Text = "Обновить список",
-    Func = function()
-        local newList = getPlayerList()
-        playerDropdown:SetValues(newList)
-        if #newList > 0 then
-            playerDropdown:SetValue(newList[1])
-            selectedBlobTarget = game:GetService("Players"):FindFirstChild(newList[1])
-        end
-    end
-})
-
--- КНОПКА КИК 1 РАЗ
-TargetBlobGroup:AddButton({
-    Text = "Кик 1 раз",
-    Func = function()
-        if not selectedBlobTarget then
-            Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
-            return
-        end
-        Library:Notify({Title = "Кик", Description = "Применён к " .. selectedBlobTarget.Name, Duration = 2})
-    end
-})
-
--- ТОГГЛ LOOP KICK
-local loopToggle = TargetBlobGroup:AddToggle("LoopKickToggle", {
-    Text = "Loop Kick (grab + blob)",
-    Default = false,
-    Callback = function(Value)
-        loopActive = Value
-        if Value then
-            if not selectedBlobTarget then
-                Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
-                loopToggle:SetValue(false)
-                return
-            end
-            Library:Notify({Title = "Loop Kick", Description = "Включён для " .. selectedBlobTarget.Name, Duration = 2})
-        else
-            Library:Notify({Title = "Loop Kick", Description = "Выключен", Duration = 2})
-        end
-    end
-})
--- ==================================================
--- ОПТИМИЗАЦИЯ
--- ==================================================
 task.spawn(function()
     print("✅ Оптимизация запущена")
     local lighting = game:GetService("Lighting")
@@ -449,7 +371,7 @@ if grabEvents then
     local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
     if createGrabLine then
         createGrabLine.OnClientEvent = function() end
-        print("✅ CreateGrabLine отключ honored на клиенте")
+        print("✅ CreateGrabLine отключён на клиенте")
     end
 end
 
