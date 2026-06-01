@@ -270,15 +270,15 @@ AntiLagGroup:AddToggle("AntiLag", {
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
 local lagActive = false
-local lagPower = 50
-local lagConnection = nil
+local lagPower = 500
+local lagSpamTask = nil
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
-    Default = 50,
-    Min = 10,
+    Default = 500,
+    Min = 300,
     Max = 1000,
-    Step = 10,
+    Step = 50,
     Rounding = 0,
     Callback = function(Value)
         lagPower = Value
@@ -286,7 +286,7 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 })
 
 local function startLag()
-    if lagConnection then lagConnection:Disconnect() end
+    if lagSpamTask then task.cancel(lagSpamTask) end
     
     local createGrabLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
     if not createGrabLine then
@@ -294,13 +294,14 @@ local function startLag()
         return
     end
     
-    lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if lagActive then
+    lagSpamTask = task.spawn(function()
+        while lagActive do
             for i = 1, lagPower do
                 pcall(function()
                     createGrabLine:FireServer(workspace.CurrentCamera.CFrame.Position, CFrame.new())
                 end)
             end
+            task.wait(0.2)
         end
     end)
     
@@ -308,10 +309,8 @@ local function startLag()
 end
 
 local function stopLag()
-    if lagConnection then
-        lagConnection:Disconnect()
-        lagConnection = nil
-    end
+    lagActive = false
+    if lagSpamTask then task.cancel(lagSpamTask) end
     Library:Notify({Title = "Лаг сервера", Description = "Выключен", Duration = 2})
 end
 
@@ -323,17 +322,6 @@ SmileGroup:AddToggle("LagToggle", {
         if Value then startLag() else stopLag() end
     end
 })
-
--- ========== ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ (СТОИТ ВНИЗУ) ==========
-local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
-if grabEvents then
-    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
-    if createGrabLine then
-        createGrabLine.OnClientEvent = function() end
-        print("✅ CreateGrabLine отключён на клиенте")
-    end
-end
--- ========== КОНЕЦ ОТКЛЮЧЕНИЯ ==========
 
 task.spawn(function()
     print("✅ Оптимизация запущена")
@@ -379,5 +367,16 @@ SaveManager:SetFolder("BrokenSpawn/Configs")
 ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
+
+-- ========== ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ (В САМОМ КОНЦЕ) ==========
+local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+if grabEvents then
+    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
+    if createGrabLine then
+        createGrabLine.OnClientEvent = function() end
+        print("✅ CreateGrabLine отключён на клиенте")
+    end
+end
+-- ========== КОНЕЦ ОТКЛЮЧЕНИЯ ==========
 
 print("✅ Меню загружено | Лаг сервера во вкладке Smile")
