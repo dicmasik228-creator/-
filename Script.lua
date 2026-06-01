@@ -269,12 +269,12 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (БЕЗ ПИНГА ДЛЯ ТЕБЯ) ==========
+-- ========== ЛАГ СЕРВЕРА (КАК В RESONANCE, БЕЗ ПИНГА) ==========
 -- Отключаем обработку Look на клиенте
 local lookEvent = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Look")
 if lookEvent then
     lookEvent.OnClientEvent = function() end
-    print("✅ Look event отключён")
+    print("✅ Look event отключён на клиенте")
 end
 
 local lagActive = false
@@ -331,7 +331,6 @@ SmileGroup:AddToggle("LagToggle", {
         if Value then startLag() else stopLag() end
     end
 })
-})
 
 task.spawn(function()
     print("✅ Оптимизация запущена")
@@ -378,4 +377,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено")
+print("✅ Меню загружено | Лаг сервера как в Resonance")
