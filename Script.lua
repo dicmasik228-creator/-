@@ -356,11 +356,15 @@ SmileGroup:AddToggle("LagToggle", {
 -- ==================================================
 -- ВКЛАДКА TARGET BLOB (БЛОБМАН КИК)
 -- ==================================================
-local TargetBlobGroup = Tabs.TargetBlob:AddLeftGroupbox("Блобман кик")
-local TargetSelectGroup = Tabs.TargetBlob:AddRightGroupbox("Выбор цели")
+local TargetBlobGroup = Tabs.TargetBlob:AddLeftGroupbox("Блобман действия")
+local TargetSelectGroup = Tabs.TargetBlob:AddRightGroupbox("Выбор цели и действия")
 
 local selectedBlobTarget = nil
+local selectedAction = "Кик"
+local actionActive = false
+local actionConnection = nil
 
+-- Функция получения списка игроков (кроме себя)
 local function getPlayerList()
     local players = {}
     local localPlayer = game.Players.LocalPlayer
@@ -372,29 +376,44 @@ local function getPlayerList()
     return players
 end
 
+-- Выпадающий список игроков
 local playerDropdown = TargetSelectGroup:AddDropdown("BlobTargetSelect", {
     Text = "Выберите игрока",
     Values = getPlayerList(),
     Default = 1,
     Callback = function(Value)
         selectedBlobTarget = game:GetService("Players"):FindFirstChild(Value)
+        applyLabel:Set("Цель: " .. (selectedBlobTarget and selectedBlobTarget.Name or "не выбран"))
     end
 })
 
-local applyLabel = TargetSelectGroup:AddLabel("Применяется к: " .. (selectedBlobTarget and selectedBlobTarget.Name or "не выбран"))
+-- Текст "Цель:"
+local applyLabel = TargetSelectGroup:AddLabel("Цель: " .. (selectedBlobTarget and selectedBlobTarget.Name or "не выбран"))
 
+-- Выпадающий список действий
+local actionDropdown = TargetSelectGroup:AddDropdown("BlobActionSelect", {
+    Text = "Выберите действие",
+    Values = {"Кик", "Убить", "Зафиксировать"},
+    Default = 1,
+    Callback = function(Value)
+        selectedAction = Value
+    end
+})
+
+-- Функция обновления списка игроков
 local function refreshPlayerList()
     local newList = getPlayerList()
     playerDropdown:SetValues(newList)
     if #newList > 0 then
         playerDropdown:SetValue(newList[1])
         selectedBlobTarget = game:GetService("Players"):FindFirstChild(newList[1])
-        applyLabel:Set("Применяется к: " .. selectedBlobTarget.Name)
+        applyLabel:Set("Цель: " .. selectedBlobTarget.Name)
     else
-        applyLabel:Set("Применяется к: не выбран")
+        applyLabel:Set("Цель: не выбран")
     end
 end
 
+-- Автообновление при входе/выходе игрока
 game:GetService("Players").PlayerAdded:Connect(function()
     task.wait(0.5)
     refreshPlayerList()
@@ -406,10 +425,11 @@ end)
 
 refreshPlayerList()
 
-local function startKick(targetPlayer)
+-- ========== КИК БЛОБМАНОМ (РАБОТАЕТ) ==========
+local function doKick(targetPlayer)
     if not targetPlayer or not targetPlayer.Character then 
         Library:Notify({Title = "Ошибка", Description = "Цель не найдена", Duration = 3})
-        return 
+        return false
     end
     
     local char = game.Players.LocalPlayer.Character
@@ -418,7 +438,7 @@ local function startKick(targetPlayer)
     
     if not seat or seat.Parent.Name ~= "CreatureBlobman" then
         Library:Notify({Title = "Ошибка", Description = "Сядь на блобмана", Duration = 3})
-        return
+        return false
     end
     
     local blob = seat.Parent
@@ -432,8 +452,9 @@ local function startKick(targetPlayer)
     local tChar = targetPlayer.Character
     local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
     
-    if not tRoot then return end
+    if not tRoot then return false
     
+    -- Подтягиваем цель
     local bringStart = tick()
     while tick() - bringStart < 0.35 do
         blobRoot.CFrame = tRoot.CFrame
@@ -452,6 +473,7 @@ local function startKick(targetPlayer)
     blobRoot.Velocity = Vector3.zero
     task.wait(0.05)
     
+    -- Кик
     local lockPos = SavedPos * CFrame.new(0, 23, 0)
     tRoot.CFrame = lockPos
     tRoot.Velocity = Vector3.zero
@@ -471,31 +493,74 @@ local function startKick(targetPlayer)
         ReplicatedStorage.GrabEvents.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
     end)
     
-    Library:Notify({Title = "Кик", Description = "Применён к " .. targetPlayer.Name, Duration = 3})
+    return true
 end
 
-TargetBlobGroup:AddButton({
-    Text = "Кик",
-    Func = function()
-        if selectedBlobTarget then
-            startKick(selectedBlobTarget)
+-- Заглушки для других действий
+local function doKill(targetPlayer)
+    Library:Notify({Title = "Убить", Description = "Функция в разработке", Duration = 2})
+    return false
+end
+
+local function doFixate(targetPlayer)
+    Library:Notify({Title = "Зафиксировать", Description = "Функция в разработке", Duration = 2})
+    return false
+end
+
+-- Выполнение выбранного действия
+local function executeAction()
+    if not selectedBlobTarget then
+        Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
+        return
+    end
+    
+    if selectedAction == "Кик" then
+        doKick(selectedBlobTarget)
+    elseif selectedAction == "Убить" then
+        doKill(selectedBlobTarget)
+    elseif selectedAction == "Зафиксировать" then
+        doFixate(selectedBlobTarget)
+    end
+end
+
+-- Цикл для повторяющегося действия (если тоггл включён)
+local function startActionLoop()
+    if actionConnection then actionConnection:Disconnect() end
+    actionConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if actionActive then
+            executeAction()
+        end
+    end)
+end
+
+local function stopActionLoop()
+    if actionConnection then
+        actionConnection:Disconnect()
+        actionConnection = nil
+    end
+end
+
+-- Тоггл включения/выключения действия
+TargetBlobGroup:AddToggle("ActionToggle", {
+    Text = "Включить действие",
+    Default = false,
+    Callback = function(Value)
+        actionActive = Value
+        if Value then
+            startActionLoop()
+            Library:Notify({Title = "Действие", Description = selectedAction .. " включён", Duration = 2})
         else
-            Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
+            stopActionLoop()
+            Library:Notify({Title = "Действие", Description = selectedAction .. " выключен", Duration = 2})
         end
     end
 })
 
+-- Кнопка для ручного применения (один раз)
 TargetBlobGroup:AddButton({
-    Text = "Убить",
+    Text = "Применить действие (1 раз)",
     Func = function()
-        Library:Notify({Title = "Убить", Description = "Функция в разработке", Duration = 2})
-    end
-})
-
-TargetBlobGroup:AddButton({
-    Text = "Зафиксировать",
-    Func = function()
-        Library:Notify({Title = "Зафиксировать", Description = "Функция в разработке", Duration = 2})
+        executeAction()
     end
 })
 
