@@ -269,16 +269,17 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
+-- ========== ЛАГ СЕРВЕРА (РАБОЧИЙ) ==========
 local lagActive = false
 local lagPower = 500
-local lagSpamTask = nil
+local lagConnection = nil
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
     Default = 500,
-    Min = 300,
+    Min = 10,
     Max = 1000,
-    Step = 50,
+    Step = 10,
     Rounding = 0,
     Callback = function(Value)
         lagPower = Value
@@ -286,7 +287,7 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 })
 
 local function startLag()
-    if lagSpamTask then task.cancel(lagSpamTask) end
+    if lagConnection then lagConnection:Disconnect() end
     
     local createGrabLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
     if not createGrabLine then
@@ -294,14 +295,13 @@ local function startLag()
         return
     end
     
-    lagSpamTask = task.spawn(function()
-        while lagActive do
+    lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if lagActive then
             for i = 1, lagPower do
                 pcall(function()
                     createGrabLine:FireServer(workspace.CurrentCamera.CFrame.Position, CFrame.new())
                 end)
             end
-            task.wait(0.2)
         end
     end)
     
@@ -309,8 +309,10 @@ local function startLag()
 end
 
 local function stopLag()
-    lagActive = false
-    if lagSpamTask then task.cancel(lagSpamTask) end
+    if lagConnection then
+        lagConnection:Disconnect()
+        lagConnection = nil
+    end
     Library:Notify({Title = "Лаг сервера", Description = "Выключен", Duration = 2})
 end
 
@@ -322,7 +324,6 @@ SmileGroup:AddToggle("LagToggle", {
         if Value then startLag() else stopLag() end
     end
 })
-
 task.spawn(function()
     print("✅ Оптимизация запущена")
     local lighting = game:GetService("Lighting")
