@@ -267,16 +267,15 @@ AntiLagGroup:AddToggle("AntiLag", {
     end
 })
 
+-- ========== СОЗДАЁМ ГРУППУ В SMILE ==========
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (КАК В RESONANCE) ==========
--- Отключаем обработку CreateGrabLine на клиенте
+-- ========== ЛАГ СЕРВЕРА ==========
 local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
 if grabEvents then
     local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
     if createGrabLine then
         createGrabLine.OnClientEvent = function() end
-        print("✅ CreateGrabLine отключён на клиенте")
     end
 end
 
@@ -298,13 +297,11 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
-    
     local createGrabLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
     if not createGrabLine then
         Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
         return
     end
-    
     lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if lagActive then
             for i = 1, lagPower do
@@ -314,7 +311,6 @@ local function startLag()
             end
         end
     end)
-    
     Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. lagPower .. ")", Duration = 3})
 end
 
@@ -380,4 +376,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Лаг сервера во вкладке Smile")
+print("✅ Меню загружено")
