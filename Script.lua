@@ -269,7 +269,7 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (ЧЕРЕЗ EXPLOSIONMAKER, КАК RESONANCE) ==========
+-- ========== ЛАГ СЕРВЕРА (ЧЕРЕЗ CHARACTERANDBEAMMOVE) ==========
 local lagActive = false
 local lagPower = 30
 local lagConnection = nil
@@ -289,9 +289,10 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
     
-    local explosionMaker = ReplicatedStorage:FindFirstChild("ExplosionMaker")
-    if not explosionMaker then
-        Library:Notify({Title = "Ошибка", Description = "ExplosionMaker не найден", Duration = 3})
+    local characterAndBeamMove = LocalPlayer:FindFirstChild("PlayerScripts") and LocalPlayer.PlayerScripts:FindFirstChild("CharacterAndBeamMove")
+    
+    if not characterAndBeamMove then
+        Library:Notify({Title = "Ошибка", Description = "CharacterAndBeamMove не найден", Duration = 3})
         return
     end
     
@@ -299,7 +300,8 @@ local function startLag()
         if lagActive then
             for i = 1, lagPower do
                 pcall(function()
-                    explosionMaker.RequirementsToExplode(nil, nil)
+                    characterAndBeamMove.Disabled = true
+                    characterAndBeamMove.Disabled = false
                 end)
             end
         end
