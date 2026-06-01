@@ -269,15 +269,16 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
+-- ========== ЛАГ СЕРВЕРА (ЧЕРЕЗ EXPLOSIONMAKER, КАК RESONANCE) ==========
 local lagActive = false
-local lagPower = 50
+local lagPower = 30
 local lagConnection = nil
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
-    Default = 50,
+    Default = 30,
     Min = 10,
-    Max = 1000,
+    Max = 200,
     Step = 10,
     Rounding = 0,
     Callback = function(Value)
@@ -288,9 +289,9 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
     
-    local createGrabLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
-    if not createGrabLine then
-        Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
+    local explosionMaker = ReplicatedStorage:FindFirstChild("ExplosionMaker")
+    if not explosionMaker then
+        Library:Notify({Title = "Ошибка", Description = "ExplosionMaker не найден", Duration = 3})
         return
     end
     
@@ -298,7 +299,7 @@ local function startLag()
         if lagActive then
             for i = 1, lagPower do
                 pcall(function()
-                    createGrabLine:FireServer(workspace.CurrentCamera.CFrame.Position, CFrame.new())
+                    explosionMaker.RequirementsToExplode(nil, nil)
                 end)
             end
         end
@@ -323,17 +324,6 @@ SmileGroup:AddToggle("LagToggle", {
         if Value then startLag() else stopLag() end
     end
 })
-
--- ========== ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ (СТОИТ ВНИЗУ) ==========
-local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
-if grabEvents then
-    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
-    if createGrabLine then
-        createGrabLine.OnClientEvent = function() end
-        print("✅ CreateGrabLine отключён на клиенте")
-    end
-end
--- ========== КОНЕЦ ОТКЛЮЧЕНИЯ ==========
 
 task.spawn(function()
     print("✅ Оптимизация запущена")
@@ -380,4 +370,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Лаг сервера во вкладке Smile")
+print("✅ Меню загружено")
