@@ -269,21 +269,24 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (КАК В RESONANCE, БЕЗ ПИНГА) ==========
--- Отключаем обработку Look на клиенте
-local lookEvent = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Look")
-if lookEvent then
-    lookEvent.OnClientEvent = function() end
-    print("✅ Look event отключён на клиенте")
+-- ========== ЛАГ СЕРВЕРА (КАК В RESONANCE) ==========
+-- Отключаем обработку CreateGrabLine на клиенте
+local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+if grabEvents then
+    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
+    if createGrabLine then
+        createGrabLine.OnClientEvent = function() end
+        print("✅ CreateGrabLine отключён на клиенте")
+    end
 end
 
 local lagActive = false
-local lagPower = 30
+local lagPower = 50
 local lagConnection = nil
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
-    Default = 30,
+    Default = 50,
     Min = 10,
     Max = 1000,
     Step = 10,
@@ -296,9 +299,9 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
     
-    local lookEvent = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Look")
-    if not lookEvent then
-        Library:Notify({Title = "Ошибка", Description = "Look не найден", Duration = 3})
+    local createGrabLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
+    if not createGrabLine then
+        Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
         return
     end
     
@@ -306,7 +309,7 @@ local function startLag()
         if lagActive then
             for i = 1, lagPower do
                 pcall(function()
-                    lookEvent:FireServer(CFrame.new())
+                    createGrabLine:FireServer(workspace.CurrentCamera.CFrame.Position, CFrame.new())
                 end)
             end
         end
@@ -377,4 +380,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Лаг сервера как в Resonance")
+print("✅ Меню загружено | Лаг сервера работает")
