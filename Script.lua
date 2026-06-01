@@ -380,4 +380,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Лаг сервера работает")
+print("✅ Меню загружено | Лаг сервера во вкладке Smile")
