@@ -269,16 +269,7 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (CREATEGRABLINE + ОТКЛЮЧЕНИЕ КЛИЕНТА) ==========
-local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
-if grabEvents then
-    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
-    if createGrabLine then
-        createGrabLine.OnClientEvent = function() end
-        print("✅ CreateGrabLine отключён на клиенте")
-    end
-end
-
+-- ========== ЛАГ СЕРВЕРА ==========
 local lagActive = false
 local lagPower = 500
 local lagConnection = nil
@@ -314,7 +305,7 @@ local function startLag()
         end
     end)
     
-    Library:Notify({Title = "Лаг сервера", Description = "Включ honored (мощность: " .. lagPower .. ")", Duration = 3})
+    Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. lagPower .. ")", Duration = 3})
 end
 
 local function stopLag()
@@ -378,5 +369,16 @@ SaveManager:SetFolder("BrokenSpawn/Configs")
 ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
+
+-- ========== ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ (В САМОМ КОНЦЕ) ==========
+local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+if grabEvents then
+    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
+    if createGrabLine then
+        createGrabLine.OnClientEvent = function() end
+        print("✅ CreateGrabLine отключён на клиенте")
+    end
+end
+-- ========== КОНЕЦ ОТКЛЮЧЕНИЯ ==========
 
 print("✅ Меню загружено | Лаг сервера во вкладке Smile")
