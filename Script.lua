@@ -269,170 +269,59 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ 1 (ExtendGrabLine) ==========
-local lag1Active = false
-local lag1Power = 100
-local lag1Connection = nil
+-- ========== ЛАГ СЕРВЕРА (СТИЛЬ RESONANCE) ==========
+local lagActive = false
+local lagPower = 30
+local lagConnection = nil
 
-local lag1Slider = SmileGroup:AddSlider("Lag1Power", {
-    Text = "Лаг 1 (Line) мощность",
-    Default = 100,
+local lagSlider = SmileGroup:AddSlider("LagPower", {
+    Text = "Мощность лага",
+    Default = 30,
     Min = 10,
-    Max = 500,
+    Max = 1000,
+    Step = 10,
     Rounding = 0,
-    Callback = function(Value) lag1Power = Value end
-})
-
-local function startLag1()
-    if lag1Connection then lag1Connection:Disconnect() end
-    local extendLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("ExtendGrabLine")
-    if not extendLine then Library:Notify({Title = "Ошибка", Description = "ExtendGrabLine не найден", Duration = 3}) return end
-    lag1Connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if lag1Active then for i = 1, lag1Power do pcall(function() extendLine:FireServer(string.rep("A", 500)) end) end end
-    end)
-    Library:Notify({Title = "Лаг 1", Description = "Включён (Line)", Duration = 3})
-end
-
-local function stopLag1()
-    if lag1Connection then lag1Connection:Disconnect() end
-    Library:Notify({Title = "Лаг 1", Description = "Выключен", Duration = 2})
-end
-
-SmileGroup:AddToggle("Lag1Toggle", {
-    Text = "Лаг 1 (ExtendGrabLine)",
-    Default = false,
     Callback = function(Value)
-        lag1Active = Value
-        if Value then startLag1() else stopLag1() end
+        lagPower = Value
     end
 })
 
--- ========== ЛАГ 2 (StopAllVelocity) ==========
-local lag2Active = false
-local lag2Power = 100
-local lag2Connection = nil
-
-local lag2Slider = SmileGroup:AddSlider("Lag2Power", {
-    Text = "Лаг 2 (Velocity) мощность",
-    Default = 100,
-    Min = 10,
-    Max = 500,
-    Rounding = 0,
-    Callback = function(Value) lag2Power = Value end
-})
-
-local function startLag2()
-    if lag2Connection then lag2Connection:Disconnect() end
-    local stopVelocity = ReplicatedStorage:FindFirstChild("GameCorrectionEvents") and ReplicatedStorage.GameCorrectionEvents:FindFirstChild("StopAllVelocity")
-    if not stopVelocity then Library:Notify({Title = "Ошибка", Description = "StopAllVelocity не найден", Duration = 3}) return end
-    lag2Connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if lag2Active then for i = 1, lag2Power do pcall(function() stopVelocity:FireServer() end) end end
-    end)
-    Library:Notify({Title = "Лаг 2", Description = "Включён (Velocity)", Duration = 3})
-end
-
-local function stopLag2()
-    if lag2Connection then lag2Connection:Disconnect() end
-    Library:Notify({Title = "Лаг 2", Description = "Выключен", Duration = 2})
-end
-
-SmileGroup:AddToggle("Lag2Toggle", {
-    Text = "Лаг 2 (StopAllVelocity)",
-    Default = false,
-    Callback = function(Value)
-        lag2Active = Value
-        if Value then startLag2() else stopLag2() end
+local function startLag()
+    if lagConnection then lagConnection:Disconnect() end
+    
+    local lookEvent = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Look")
+    if not lookEvent then
+        Library:Notify({Title = "Ошибка", Description = "Look не найден", Duration = 3})
+        return
     end
-})
-
--- ========== ЛАГ 3 (CreateGrabLine) ==========
-local lag3Active = false
-local lag3Power = 100
-local lag3Connection = nil
-
-local lag3Slider = SmileGroup:AddSlider("Lag3Power", {
-    Text = "Лаг 3 (Grab) мощность",
-    Default = 100,
-    Min = 10,
-    Max = 500,
-    Rounding = 0,
-    Callback = function(Value) lag3Power = Value end
-})
-
-local function startLag3()
-    if lag3Connection then lag3Connection:Disconnect() end
-    local createLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
-    if not createLine then Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3}) return end
-    local players = game:GetService("Players")
-    local localPlayer = players.LocalPlayer
-    local targets = {}
-    for _, plr in ipairs(players:GetPlayers()) do
-        if plr ~= localPlayer and plr.Character then
-            local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
-            if hrp then table.insert(targets, hrp) end
-        end
-    end
-    lag3Connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if lag3Active then
-            for _, target in ipairs(targets) do
-                for i = 1, lag3Power do
-                    pcall(function() createLine:FireServer(target, target.CFrame) end)
-                end
+    
+    lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if lagActive then
+            for i = 1, lagPower do
+                pcall(function()
+                    lookEvent:FireServer(CFrame.new())
+                end)
             end
         end
     end)
-    Library:Notify({Title = "Лаг 3", Description = "Включён (Grab)", Duration = 3})
+    
+    Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. lagPower .. ")", Duration = 3})
 end
 
-local function stopLag3()
-    if lag3Connection then lag3Connection:Disconnect() end
-    Library:Notify({Title = "Лаг 3", Description = "Выключен", Duration = 2})
-end
-
-SmileGroup:AddToggle("Lag3Toggle", {
-    Text = "Лаг 3 (CreateGrabLine)",
-    Default = false,
-    Callback = function(Value)
-        lag3Active = Value
-        if Value then startLag3() else stopLag3() end
+local function stopLag()
+    if lagConnection then
+        lagConnection:Disconnect()
+        lagConnection = nil
     end
-})
-
--- ========== ЛАГ 4 (GameCorrectionsNotify) ==========
-local lag4Active = false
-local lag4Power = 100
-local lag4Connection = nil
-
-local lag4Slider = SmileGroup:AddSlider("Lag4Power", {
-    Text = "Лаг 4 (Notify) мощность",
-    Default = 100,
-    Min = 10,
-    Max = 500,
-    Rounding = 0,
-    Callback = function(Value) lag4Power = Value end
-})
-
-local function startLag4()
-    if lag4Connection then lag4Connection:Disconnect() end
-    local gameNotify = ReplicatedStorage:FindFirstChild("GameCorrectionEvents") and ReplicatedStorage.GameCorrectionEvents:FindFirstChild("GameCorrectionsNotify")
-    if not gameNotify then Library:Notify({Title = "Ошибка", Description = "GameCorrectionsNotify не найден", Duration = 3}) return end
-    lag4Connection = game:GetService("RunService").Heartbeat:Connect(function()
-        if lag4Active then for i = 1, lag4Power do pcall(function() gameNotify:FireServer("Flying") end) end end
-    end)
-    Library:Notify({Title = "Лаг 4", Description = "Включён (Notify)", Duration = 3})
+    Library:Notify({Title = "Лаг сервера", Description = "Выключен", Duration = 2})
 end
 
-local function stopLag4()
-    if lag4Connection then lag4Connection:Disconnect() end
-    Library:Notify({Title = "Лаг 4", Description = "Выключен", Duration = 2})
-end
-
-SmileGroup:AddToggle("Lag4Toggle", {
-    Text = "Лаг 4 (GameCorrectionsNotify)",
+SmileGroup:AddToggle("LagToggle", {
+    Text = "Включить лаг сервера",
     Default = false,
     Callback = function(Value)
-        lag4Active = Value
-        if Value then startLag4() else stopLag4() end
+        lagActive = Value
+        if Value then startLag() else stopLag() end
     end
 })
 
@@ -481,4 +370,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | 4 вида лага во вкладке Smile")
+print("✅ Меню загружено")
