@@ -267,18 +267,7 @@ AntiLagGroup:AddToggle("AntiLag", {
     end
 })
 
--- ========== ВКЛАДКА SMILE ==========
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
-
--- ========== ЛАГ СЕРВЕРА ==========
-local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
-if grabEvents then
-    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
-    if createGrabLine then
-        createGrabLine.OnClientEvent = function() end
-        print("✅ CreateGrabLine отключён на клиенте")
-    end
-end
 
 local lagActive = false
 local lagPower = 50
@@ -298,11 +287,13 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
+    
     local createGrabLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
     if not createGrabLine then
         Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
         return
     end
+    
     lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if lagActive then
             for i = 1, lagPower do
@@ -312,6 +303,7 @@ local function startLag()
             end
         end
     end)
+    
     Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. lagPower .. ")", Duration = 3})
 end
 
@@ -332,49 +324,16 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
--- ========== ЗАЩИТА ОТ УДАЛЕНИЯ КНОПОК ==========
-local function protectButtons()
-    local slider = SmileGroup:FindFirstChild("LagPower")
-    local toggle = SmileGroup:FindFirstChild("LagToggle")
-    
-    if not slider or not toggle then
-        print("⚠️ Кнопки лага пропали! Восстанавливаем...")
-        
-        if not slider then
-            SmileGroup:AddSlider("LagPower", {
-                Text = "Мощность лага",
-                Default = lagPower or 50,
-                Min = 10,
-                Max = 1000,
-                Step = 10,
-                Rounding = 0,
-                Callback = function(Value)
-                    lagPower = Value
-                end
-            })
-            print("✅ Слайдер восстановлен")
-        end
-        
-        if not toggle then
-            SmileGroup:AddToggle("LagToggle", {
-                Text = "Включить лаг сервера",
-                Default = lagActive or false,
-                Callback = function(Value)
-                    lagActive = Value
-                    if Value then startLag() else stopLag() end
-                end
-            })
-            print("✅ Тоггл восстановлен")
-        end
+-- ========== ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ (СТОИТ ВНИЗУ) ==========
+local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+if grabEvents then
+    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
+    if createGrabLine then
+        createGrabLine.OnClientEvent = function() end
+        print("✅ CreateGrabLine отключён на клиенте")
     end
 end
-
-task.spawn(function()
-    while true do
-        task.wait(2)
-        pcall(protectButtons)
-    end
-end)
+-- ========== КОНЕЦ ОТКЛЮЧЕНИЯ ==========
 
 task.spawn(function()
     print("✅ Оптимизация запущена")
@@ -421,4 +380,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено | Лаг сервера во вкладке Smile | Кнопки защищены от удаления")
+print("✅ Меню загружено | Лаг сервера во вкладке Smile")
