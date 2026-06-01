@@ -328,8 +328,10 @@ local TargetBlobGroup = Tabs.TargetBlob:AddLeftGroupbox("Блобман кик")
 local TargetSelectGroup = Tabs.TargetBlob:AddRightGroupbox("Выбор цели")
 
 local selectedBlobTarget = nil
-local kickLoopEnabled = false
+local loopActive = false
+local loopConnection = nil
 
+-- Список игроков
 local function getPlayerList()
     local players = {}
     local localPlayer = game.Players.LocalPlayer
@@ -341,6 +343,7 @@ local function getPlayerList()
     return players
 end
 
+-- ВЫПАДАЮЩИЙ СПИСОК (КНОПКА)
 local playerDropdown = TargetSelectGroup:AddDropdown("BlobTargetSelect", {
     Text = "Выберите игрока",
     Values = getPlayerList(),
@@ -353,9 +356,39 @@ local playerDropdown = TargetSelectGroup:AddDropdown("BlobTargetSelect", {
     end
 })
 
+-- ТЕКСТ (НЕ КНОПКА)
 local applyLabel = TargetSelectGroup:AddLabel("Цель: не выбран")
 
-local function refreshPlayerList()
+-- КНОПКА ОБНОВЛЕНИЯ СПИСКА
+TargetSelectGroup:AddButton({
+    Text = "Обновить список",
+    Func = function()
+        local newList = getPlayerList()
+        playerDropdown:SetValues(newList)
+        if #newList > 0 then
+            playerDropdown:SetValue(newList[1])
+            selectedBlobTarget = game:GetService("Players"):FindFirstChild(newList[1])
+            applyLabel:Set("Цель: " .. selectedBlobTarget.Name)
+        else
+            applyLabel:Set("Цель: не выбран")
+        end
+    end
+})
+
+-- ОБНОВЛЕНИЕ ПРИ ВХОДЕ/ВЫХОДЕ
+game:GetService("Players").PlayerAdded:Connect(function()
+    task.wait(0.5)
+    local newList = getPlayerList()
+    playerDropdown:SetValues(newList)
+    if #newList > 0 then
+        playerDropdown:SetValue(newList[1])
+        selectedBlobTarget = game:GetService("Players"):FindFirstChild(newList[1])
+        applyLabel:Set("Цель: " .. selectedBlobTarget.Name)
+    end
+end)
+
+game:GetService("Players").PlayerRemoving:Connect(function()
+    task.wait(0.5)
     local newList = getPlayerList()
     playerDropdown:SetValues(newList)
     if #newList > 0 then
@@ -365,30 +398,13 @@ local function refreshPlayerList()
     else
         applyLabel:Set("Цель: не выбран")
     end
-end
-
-game:GetService("Players").PlayerAdded:Connect(function()
-    task.wait(0.5)
-    refreshPlayerList()
-end)
-game:GetService("Players").PlayerRemoving:Connect(function()
-    task.wait(0.5)
-    refreshPlayerList()
 end)
 
-refreshPlayerList()
-
--- LOOP KICK
-local function startKickLoop()
-    kickLoopEnabled = true
-    local target = selectedBlobTarget
-    
-    if not target then
-        kickLoopEnabled = false
-        if Toggles.LoopKickToggle then
-            Toggles.LoopKickToggle:SetValue(false)
-        end
-        return
+-- Функция одного кика
+local function doKick(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then 
+        Library:Notify({Title = "Ошибка", Description = "Цель не найдена", Duration = 2})
+        return false
     end
     
     local char = game.Players.LocalPlayer.Character
@@ -396,113 +412,106 @@ local function startKickLoop()
     local seat = hum and hum.SeatPart
     
     if not seat or seat.Parent.Name ~= "CreatureBlobman" then
-        kickLoopEnabled = false
-        if Toggles.LoopKickToggle then
-            Toggles.LoopKickToggle:SetValue(false)
-        end
-        return
+        Library:Notify({Title = "Ошибка", Description = "Сядь на блобмана", Duration = 3})
+        return false
     end
     
-    task.spawn(function()
-        local RS = game:GetService("ReplicatedStorage")
-        local GE = RS:WaitForChild("GrabEvents")
-        local RunService = game:GetService("RunService")
-        local blob = seat.Parent
-        local blobRoot = blob:FindFirstChild("HumanoidRootPart") or blob.PrimaryPart
-        local scriptObj = blob:FindFirstChild("BlobmanSeatAndOwnerScript")
-        local CG = scriptObj and scriptObj:FindFirstChild("CreatureGrab")
-        local CD = scriptObj and scriptObj:FindFirstChild("CreatureDrop")
-        local R_Det = blob:FindFirstChild("RightDetector")
-        local R_Weld = R_Det and (R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld"))
-        local SavedPos = blobRoot.CFrame
-        local tChar = target.Character
-        local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
-        
-        if tRoot and blobRoot then
-            local bringStart = tick()
-            while tick() - bringStart < 0.35 do
-                if not kickLoopEnabled then break end
-                blobRoot.CFrame = tRoot.CFrame
-                blobRoot.Velocity = Vector3.zero
-                pcall(function()
-                    if CG and R_Det then
-                        CG:FireServer(R_Det, tRoot, R_Weld)
-                    end
-                    GE.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
-                    GE.SetNetworkOwner:FireServer(tRoot, blobRoot.CFrame)
-                end)
-                RunService.Heartbeat:Wait()
+    local blob = seat.Parent
+    local blobRoot = blob:FindFirstChild("HumanoidRootPart") or blob.PrimaryPart
+    local scriptObj = blob:FindFirstChild("BlobmanSeatAndOwnerScript")
+    local CG = scriptObj and scriptObj:FindFirstChild("CreatureGrab")
+    local CD = scriptObj and scriptObj:FindFirstChild("CreatureDrop")
+    local R_Det = blob:FindFirstChild("RightDetector")
+    local R_Weld = R_Det and (R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld"))
+    local SavedPos = blobRoot.CFrame
+    local tChar = targetPlayer.Character
+    local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
+    
+    if not tRoot then return false
+    
+    -- Подтягиваем
+    local bringStart = tick()
+    while tick() - bringStart < 0.35 do
+        blobRoot.CFrame = tRoot.CFrame
+        blobRoot.Velocity = Vector3.zero
+        pcall(function()
+            if CG and R_Det then
+                CG:FireServer(R_Det, tRoot, R_Weld)
             end
-            blobRoot.CFrame = SavedPos
-            blobRoot.Velocity = Vector3.zero
-            task.wait(0.05)
-        end
-        
-        local packetTimer = 0
-        while kickLoopEnabled do
-            if not target or not target.Parent or not target.Character then
-                break
+            ReplicatedStorage.GrabEvents.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
+            ReplicatedStorage.GrabEvents.SetNetworkOwner:FireServer(tRoot, blobRoot.CFrame)
+        end)
+        task.wait()
+    end
+    
+    blobRoot.CFrame = SavedPos
+    blobRoot.Velocity = Vector3.zero
+    task.wait(0.05)
+    
+    -- Кик
+    local lockPos = SavedPos * CFrame.new(0, 23, 0)
+    tRoot.CFrame = lockPos
+    tRoot.Velocity = Vector3.zero
+    tRoot.RotVelocity = Vector3.zero
+    
+    pcall(function()
+        if R_Det then
+            local weld = R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld")
+            if weld then
+                CD:FireServer(weld)
             end
-            local tChar = target.Character
-            local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
-            local tHum = tChar and tChar:FindFirstChild("Humanoid")
-            if tRoot and tHum and tHum.Health > 0 and blobRoot then
-                blobRoot.CFrame = SavedPos
-                blobRoot.Velocity = Vector3.zero
-                local lockPos = SavedPos * CFrame.new(0, 23, 0)
-                tRoot.CFrame = lockPos
-                tRoot.Velocity = Vector3.zero
-                tRoot.RotVelocity = Vector3.zero
-                if tick() - packetTimer > 0.05 then
-                    packetTimer = tick()
-                    pcall(function()
-                        tHum.PlatformStand = true
-                        tHum.Sit = true
-                        GE.SetNetworkOwner:FireServer(tRoot, lockPos)
-                        if R_Det then
-                            local weld = R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld")
-                            if weld then
-                                CD:FireServer(weld)
-                            end
-                        end
-                        GE.DestroyGrabLine:FireServer(tRoot)
-                        if R_Det then
-                            CG:FireServer(R_Det, tRoot, R_Weld)
-                        end
-                        GE.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
-                    end)
-                end
-            else
-                blobRoot.CFrame = SavedPos
-                blobRoot.Velocity = Vector3.zero
-            end
-            if not kickLoopEnabled then break end
-            RunService.Heartbeat:Wait()
         end
-        
-        kickLoopEnabled = false
-        if Toggles.LoopKickToggle then
-            Toggles.LoopKickToggle:SetValue(false)
+        ReplicatedStorage.GrabEvents.DestroyGrabLine:FireServer(tRoot)
+        if R_Det then
+            CG:FireServer(R_Det, tRoot, R_Weld)
         end
-        if blobRoot then
-            blobRoot.CFrame = SavedPos
-            blobRoot.Velocity = Vector3.zero
-        end
+        ReplicatedStorage.GrabEvents.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
     end)
+    
+    Library:Notify({Title = "Кик", Description = "Применён к " .. targetPlayer.Name, Duration = 2})
+    return true
 end
 
-local function stopKickLoop()
-    kickLoopEnabled = false
-end
+-- КНОПКА "Кик 1 раз"
+TargetBlobGroup:AddButton({
+    Text = "Кик 1 раз",
+    Func = function()
+        if selectedBlobTarget then
+            doKick(selectedBlobTarget)
+        else
+            Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
+        end
+    end
+})
 
+-- ТОГГЛ LOOP KICK (ГЛАВНАЯ КНОПКА)
 TargetBlobGroup:AddToggle("LoopKickToggle", {
     Text = "Loop Kick (grab + blob)",
     Default = false,
-    Callback = function(on)
-        if on then
-            startKickLoop()
+    Callback = function(Value)
+        loopActive = Value
+        if Value then
+            if not selectedBlobTarget then
+                Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
+                -- Отключаем тоггл, если цель не выбрана
+                Toggles.LoopKickToggle:SetValue(false)
+                return
+            end
+            -- Запускаем цикл
+            if loopConnection then loopConnection:Disconnect() end
+            loopConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                if loopActive and selectedBlobTarget then
+                    doKick(selectedBlobTarget)
+                end
+            end)
+            Library:Notify({Title = "Loop Kick", Description = "Включён", Duration = 2})
         else
-            stopKickLoop()
+            -- Останавливаем цикл
+            if loopConnection then
+                loopConnection:Disconnect()
+                loopConnection = nil
+            end
+            Library:Notify({Title = "Loop Kick", Description = "Выключен", Duration = 2})
         end
     end
 })
