@@ -269,17 +269,26 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (ЧЕРЕЗ CHARACTERANDBEAMMOVE) ==========
+-- ========== ЛАГ СЕРВЕРА (CREATEGRABLINE + ОТКЛЮЧЕНИЕ КЛИЕНТА) ==========
+local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+if grabEvents then
+    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
+    if createGrabLine then
+        createGrabLine.OnClientEvent = function() end
+        print("✅ CreateGrabLine отключён на клиенте")
+    end
+end
+
 local lagActive = false
-local lagPower = 30
+local lagPower = 500
 local lagConnection = nil
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
-    Default = 30,
-    Min = 10,
-    Max = 200,
-    Step = 10,
+    Default = 500,
+    Min = 100,
+    Max = 1000,
+    Step = 50,
     Rounding = 0,
     Callback = function(Value)
         lagPower = Value
@@ -289,10 +298,9 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
     
-    local characterAndBeamMove = LocalPlayer:FindFirstChild("PlayerScripts") and LocalPlayer.PlayerScripts:FindFirstChild("CharacterAndBeamMove")
-    
-    if not characterAndBeamMove then
-        Library:Notify({Title = "Ошибка", Description = "CharacterAndBeamMove не найден", Duration = 3})
+    local createGrabLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
+    if not createGrabLine then
+        Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
         return
     end
     
@@ -300,14 +308,13 @@ local function startLag()
         if lagActive then
             for i = 1, lagPower do
                 pcall(function()
-                    characterAndBeamMove.Disabled = true
-                    characterAndBeamMove.Disabled = false
+                    createGrabLine:FireServer(workspace.CurrentCamera.CFrame.Position, CFrame.new())
                 end)
             end
         end
     end)
     
-    Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. lagPower .. ")", Duration = 3})
+    Library:Notify({Title = "Лаг сервера", Description = "Включ honored (мощность: " .. lagPower .. ")", Duration = 3})
 end
 
 local function stopLag()
@@ -372,4 +379,4 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
-print("✅ Меню загружено")
+print("✅ Меню загружено | Лаг сервера во вкладке Smile")
