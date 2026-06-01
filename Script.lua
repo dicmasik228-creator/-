@@ -269,17 +269,17 @@ AntiLagGroup:AddToggle("AntiLag", {
 
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА ==========
+-- ========== ЛАГ СЕРВЕРА (МОЩНОСТЬ 10-300) ==========
 local lagActive = false
-local lagPower = 500
+local lagPower = 100
 local lagConnection = nil
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
-    Default = 500,
-    Min = 100,
-    Max = 1000,
-    Step = 50,
+    Default = 100,
+    Min = 10,
+    Max = 300,
+    Step = 10,
     Rounding = 0,
     Callback = function(Value)
         lagPower = Value
@@ -370,7 +370,7 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
--- ========== ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ (В САМОМ КОНЦЕ) ==========
+-- ========== ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ ==========
 local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
 if grabEvents then
     local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
@@ -381,4 +381,4 @@ if grabEvents then
 end
 -- ========== КОНЕЦ ОТКЛЮЧЕНИЯ ==========
 
-print("✅ Меню загружено | Лаг сервера во вкладке Smile")
+print("✅ Меню загружено | Лаг сервера во вкладке Smile (мощность 10-300)")
