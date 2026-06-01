@@ -1,3 +1,10 @@
+-- ==================================================
+-- BROKEN SPAWN MENU - ПОЛНАЯ ВЕРСИЯ С ПОДПИСЯМИ
+-- ==================================================
+-- Вкладки: Players (игроки), Target (цель), Target Blob (блобмен),
+--          Defense (защита), Smile (приколы), Settings (настройки)
+-- ==================================================
+
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
@@ -10,17 +17,24 @@ local Window = Library:CreateWindow({
     ShowCustomCursor = true,
 })
 
+-- ==================================================
+-- СОЗДАНИЕ ВКЛАДОК
+-- ==================================================
 local Tabs = {
-    Players = Window:AddTab("Players", "users"),
-    Target = Window:AddTab("Target", "target"),
-    TargetBlob = Window:AddTab("Target Blob", "bot"),
-    Defense = Window:AddTab("Defense", "shield"),
-    Smile = Window:AddTab("Smile", "smile"),
-    Settings = Window:AddTab("Settings", "settings"),
+    Players = Window:AddTab("Players", "users"),           -- Настройки игрока
+    Target = Window:AddTab("Target", "target"),           -- Обычные целевые функции
+    TargetBlob = Window:AddTab("Target Blob", "bot"),     -- Целевые функции через блобмена
+    Defense = Window:AddTab("Defense", "shield"),         -- Защита
+    Smile = Window:AddTab("Smile", "smile"),              -- Приколы
+    Settings = Window:AddTab("Settings", "settings"),     -- Настройки UI
 }
 
+-- ==================================================
+-- ВКЛАДКА PLAYERS (НАСТРОЙКИ ИГРОКА)
+-- ==================================================
 local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки")
 
+-- ----- 3 ВИД (ТРЕТЬЕ ЛИЦО) -----
 local thirdPersonActive = false
 local function enableThirdPerson()
     local player = game.Players.LocalPlayer
@@ -41,18 +55,21 @@ PlayersGroup:AddToggle("ThirdPerson", {
     end
 })
 
+-- ----- УСКОРЕНИЕ (ТОЛКАЕТ ВПЕРЁД) -----
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
 local speedSteppedConnection = nil
+
 local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
     Text = "Сила ускорения",
     Default = 30,
     Min = 0,
-    Max = 10000,
+    Max = 1000,
     Rounding = 0,
     Callback = function(Value) currentSpeedValue = Value end
 })
+
 local function applySpeed()
     if not speedActive then return end
     local char = game.Players.LocalPlayer.Character
@@ -67,6 +84,7 @@ local function applySpeed()
         hrp.Velocity = Vector3.new(velocity.X, hrp.Velocity.Y, velocity.Z)
     end
 end
+
 local function startSpeedBoost()
     if speedConnection then speedConnection:Disconnect() end
     if speedSteppedConnection then speedSteppedConnection:Disconnect() end
@@ -81,6 +99,7 @@ local function startSpeedBoost()
         end
     end)
 end
+
 local function stopSpeedBoost()
     if speedConnection then speedConnection:Disconnect() end
     if speedSteppedConnection then speedSteppedConnection:Disconnect() end
@@ -92,6 +111,7 @@ local function stopSpeedBoost()
         if hum then hum.WalkSpeed = 16 end
     end
 end
+
 PlayersGroup:AddToggle("SpeedToggle", {
     Text = "Ускорение (толкает вперёд)",
     Default = false,
@@ -101,6 +121,7 @@ PlayersGroup:AddToggle("SpeedToggle", {
     end
 })
 
+-- ----- СИЛА ПРЫЖКА (УВЕЛИЧЕННЫЙ ПРЫЖОК) -----
 local jumpActive = false
 local jumpPowerValue = 50
 local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
@@ -142,6 +163,7 @@ PlayersGroup:AddToggle("JumpToggle", {
     end
 })
 
+-- ----- БЕСКОНЕЧНЫЙ ПРЫЖОК -----
 local infiniteJumpActive = false
 local infiniteJumpConnection = nil
 local function startInfiniteJump()
@@ -167,6 +189,7 @@ PlayersGroup:AddToggle("InfiniteJump", {
     end
 })
 
+-- ----- ПРОХОЖДЕНИЕ СКВОЗЬ СТЕНЫ (NOCLIP) -----
 local noclipActive = false
 local noclipConnection = nil
 local function startNoclip()
@@ -200,8 +223,12 @@ PlayersGroup:AddToggle("Noclip", {
     end
 })
 
+-- ==================================================
+-- ВКЛАДКА DEFENSE (ЗАЩИТА)
+-- ==================================================
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
+-- ----- АНТИ ГРАБ -----
 local LocalPlayer = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -244,6 +271,7 @@ DefenseGroup:AddToggle("AntiGrab", {
     end
 })
 
+-- ----- АНТИ ЛАГ -----
 local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
 local antiLagActive = false
 local function setupAntiLag()
@@ -267,9 +295,12 @@ AntiLagGroup:AddToggle("AntiLag", {
     end
 })
 
+-- ==================================================
+-- ВКЛАДКА SMILE (ПРИКОЛЫ)
+-- ==================================================
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ========== ЛАГ СЕРВЕРА (МОЩНОСТЬ 10-300) ==========
+-- ----- ЛАГ СЕРВЕРА -----
 local lagActive = false
 local lagPower = 100
 local lagConnection = nil
@@ -288,13 +319,11 @@ local lagSlider = SmileGroup:AddSlider("LagPower", {
 
 local function startLag()
     if lagConnection then lagConnection:Disconnect() end
-    
     local createGrabLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
     if not createGrabLine then
         Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
         return
     end
-    
     lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if lagActive then
             for i = 1, lagPower do
@@ -304,7 +333,6 @@ local function startLag()
             end
         end
     end)
-    
     Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. lagPower .. ")", Duration = 3})
 end
 
@@ -325,6 +353,155 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
+-- ==================================================
+-- ВКЛАДКА TARGET BLOB (БЛОБМАН КИК)
+-- ==================================================
+local TargetBlobGroup = Tabs.TargetBlob:AddLeftGroupbox("Блобман кик")
+local TargetSelectGroup = Tabs.TargetBlob:AddRightGroupbox("Выбор цели")
+
+local selectedBlobTarget = nil
+
+local function getPlayerList()
+    local players = {}
+    local localPlayer = game.Players.LocalPlayer
+    for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do
+        if plr ~= localPlayer then
+            table.insert(players, plr.Name)
+        end
+    end
+    return players
+end
+
+local playerDropdown = TargetSelectGroup:AddDropdown("BlobTargetSelect", {
+    Text = "Выберите игрока",
+    Values = getPlayerList(),
+    Default = 1,
+    Callback = function(Value)
+        selectedBlobTarget = game:GetService("Players"):FindFirstChild(Value)
+    end
+})
+
+local applyLabel = TargetSelectGroup:AddLabel("Применяется к: " .. (selectedBlobTarget and selectedBlobTarget.Name or "не выбран"))
+
+local function refreshPlayerList()
+    local newList = getPlayerList()
+    playerDropdown:SetValues(newList)
+    if #newList > 0 then
+        playerDropdown:SetValue(newList[1])
+        selectedBlobTarget = game:GetService("Players"):FindFirstChild(newList[1])
+        applyLabel:Set("Применяется к: " .. selectedBlobTarget.Name)
+    else
+        applyLabel:Set("Применяется к: не выбран")
+    end
+end
+
+game:GetService("Players").PlayerAdded:Connect(function()
+    task.wait(0.5)
+    refreshPlayerList()
+end)
+game:GetService("Players").PlayerRemoving:Connect(function()
+    task.wait(0.5)
+    refreshPlayerList()
+end)
+
+refreshPlayerList()
+
+local function startKick(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then 
+        Library:Notify({Title = "Ошибка", Description = "Цель не найдена", Duration = 3})
+        return 
+    end
+    
+    local char = game.Players.LocalPlayer.Character
+    local hum = char and char:FindFirstChild("Humanoid")
+    local seat = hum and hum.SeatPart
+    
+    if not seat or seat.Parent.Name ~= "CreatureBlobman" then
+        Library:Notify({Title = "Ошибка", Description = "Сядь на блобмана", Duration = 3})
+        return
+    end
+    
+    local blob = seat.Parent
+    local blobRoot = blob:FindFirstChild("HumanoidRootPart") or blob.PrimaryPart
+    local scriptObj = blob:FindFirstChild("BlobmanSeatAndOwnerScript")
+    local CG = scriptObj and scriptObj:FindFirstChild("CreatureGrab")
+    local CD = scriptObj and scriptObj:FindFirstChild("CreatureDrop")
+    local R_Det = blob:FindFirstChild("RightDetector")
+    local R_Weld = R_Det and (R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld"))
+    local SavedPos = blobRoot.CFrame
+    local tChar = targetPlayer.Character
+    local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
+    
+    if not tRoot then return end
+    
+    local bringStart = tick()
+    while tick() - bringStart < 0.35 do
+        blobRoot.CFrame = tRoot.CFrame
+        blobRoot.Velocity = Vector3.zero
+        pcall(function()
+            if CG and R_Det then
+                CG:FireServer(R_Det, tRoot, R_Weld)
+            end
+            ReplicatedStorage.GrabEvents.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
+            ReplicatedStorage.GrabEvents.SetNetworkOwner:FireServer(tRoot, blobRoot.CFrame)
+        end)
+        task.wait()
+    end
+    
+    blobRoot.CFrame = SavedPos
+    blobRoot.Velocity = Vector3.zero
+    task.wait(0.05)
+    
+    local lockPos = SavedPos * CFrame.new(0, 23, 0)
+    tRoot.CFrame = lockPos
+    tRoot.Velocity = Vector3.zero
+    tRoot.RotVelocity = Vector3.zero
+    
+    pcall(function()
+        if R_Det then
+            local weld = R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld")
+            if weld then
+                CD:FireServer(weld)
+            end
+        end
+        ReplicatedStorage.GrabEvents.DestroyGrabLine:FireServer(tRoot)
+        if R_Det then
+            CG:FireServer(R_Det, tRoot, R_Weld)
+        end
+        ReplicatedStorage.GrabEvents.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
+    end)
+    
+    Library:Notify({Title = "Кик", Description = "Применён к " .. targetPlayer.Name, Duration = 3})
+end
+
+TargetBlobGroup:AddButton({
+    Text = "Кик",
+    Func = function()
+        if selectedBlobTarget then
+            startKick(selectedBlobTarget)
+        else
+            Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
+        end
+    end
+})
+
+TargetBlobGroup:AddButton({
+    Text = "Убить",
+    Func = function()
+        Library:Notify({Title = "Убить", Description = "Функция в разработке", Duration = 2})
+    end
+})
+
+TargetBlobGroup:AddButton({
+    Text = "Зафиксировать",
+    Func = function()
+        Library:Notify({Title = "Зафиксировать", Description = "Функция в разработке", Duration = 2})
+    end
+})
+
+-- ==================================================
+-- ОПТИМИЗАЦИЯ (РАБОТАЕТ В ФОНЕ)
+-- ==================================================
 task.spawn(function()
     print("✅ Оптимизация запущена")
     local lighting = game:GetService("Lighting")
@@ -358,6 +535,9 @@ task.spawn(function()
     end
 end)
 
+-- ==================================================
+-- ВКЛАДКА SETTINGS (НАСТРОЙКИ UI)
+-- ==================================================
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 UIGroup:AddButton("Unload", function() Library:Unload() end)
 
@@ -370,7 +550,9 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
--- ========== ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ ==========
+-- ==================================================
+-- ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ (ДЛЯ ЛАГА)
+-- ==================================================
 local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
 if grabEvents then
     local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
@@ -379,6 +561,5 @@ if grabEvents then
         print("✅ CreateGrabLine отключён на клиенте")
     end
 end
--- ========== КОНЕЦ ОТКЛЮЧЕНИЯ ==========
 
-print("✅ Меню загружено | Лаг сервера во вкладке Smile (мощность 10-300)")
+print("✅ Меню загружено | Ускорение до 1000 | Лаг сервера во вкладке Smile | Кик блобманом во вкладке Target Blob")
