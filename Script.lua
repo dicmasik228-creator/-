@@ -1,10 +1,3 @@
--- ==================================================
--- BROKEN SPAWN MENU - ПОЛНАЯ ВЕРСИЯ С ПОДПИСЯМИ
--- ==================================================
--- Вкладки: Players (игроки), Target (цель), Target Blob (блобмен),
---          Defense (защита), Smile (приколы), Settings (настройки)
--- ==================================================
-
 local repo = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 local Library = loadstring(game:HttpGet(repo .. "Library.lua"))()
 local ThemeManager = loadstring(game:HttpGet(repo .. "addons/ThemeManager.lua"))()
@@ -17,24 +10,17 @@ local Window = Library:CreateWindow({
     ShowCustomCursor = true,
 })
 
--- ==================================================
--- СОЗДАНИЕ ВКЛАДОК
--- ==================================================
 local Tabs = {
-    Players = Window:AddTab("Players", "users"),           -- Настройки игрока
-    Target = Window:AddTab("Target", "target"),           -- Обычные целевые функции
-    TargetBlob = Window:AddTab("Target Blob", "bot"),     -- Целевые функции через блобмена
-    Defense = Window:AddTab("Defense", "shield"),         -- Защита
-    Smile = Window:AddTab("Smile", "smile"),              -- Приколы
-    Settings = Window:AddTab("Settings", "settings"),     -- Настройки UI
+    Players = Window:AddTab("Players", "users"),
+    Target = Window:AddTab("Target", "target"),
+    TargetBlob = Window:AddTab("Target Blob", "bot"),
+    Defense = Window:AddTab("Defense", "shield"),
+    Smile = Window:AddTab("Smile", "smile"),
+    Settings = Window:AddTab("Settings", "settings"),
 }
 
--- ==================================================
--- ВКЛАДКА PLAYERS (НАСТРОЙКИ ИГРОКА)
--- ==================================================
 local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки")
 
--- ----- 3 ВИД (ТРЕТЬЕ ЛИЦО) -----
 local thirdPersonActive = false
 local function enableThirdPerson()
     local player = game.Players.LocalPlayer
@@ -55,12 +41,10 @@ PlayersGroup:AddToggle("ThirdPerson", {
     end
 })
 
--- ----- УСКОРЕНИЕ (ТОЛКАЕТ ВПЕРЁД) -----
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
 local speedSteppedConnection = nil
-
 local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
     Text = "Сила ускорения",
     Default = 30,
@@ -69,7 +53,6 @@ local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
     Rounding = 0,
     Callback = function(Value) currentSpeedValue = Value end
 })
-
 local function applySpeed()
     if not speedActive then return end
     local char = game.Players.LocalPlayer.Character
@@ -84,7 +67,6 @@ local function applySpeed()
         hrp.Velocity = Vector3.new(velocity.X, hrp.Velocity.Y, velocity.Z)
     end
 end
-
 local function startSpeedBoost()
     if speedConnection then speedConnection:Disconnect() end
     if speedSteppedConnection then speedSteppedConnection:Disconnect() end
@@ -99,7 +81,6 @@ local function startSpeedBoost()
         end
     end)
 end
-
 local function stopSpeedBoost()
     if speedConnection then speedConnection:Disconnect() end
     if speedSteppedConnection then speedSteppedConnection:Disconnect() end
@@ -111,7 +92,6 @@ local function stopSpeedBoost()
         if hum then hum.WalkSpeed = 16 end
     end
 end
-
 PlayersGroup:AddToggle("SpeedToggle", {
     Text = "Ускорение (толкает вперёд)",
     Default = false,
@@ -121,7 +101,6 @@ PlayersGroup:AddToggle("SpeedToggle", {
     end
 })
 
--- ----- СИЛА ПРЫЖКА (УВЕЛИЧЕННЫЙ ПРЫЖОК) -----
 local jumpActive = false
 local jumpPowerValue = 50
 local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
@@ -163,7 +142,6 @@ PlayersGroup:AddToggle("JumpToggle", {
     end
 })
 
--- ----- БЕСКОНЕЧНЫЙ ПРЫЖОК -----
 local infiniteJumpActive = false
 local infiniteJumpConnection = nil
 local function startInfiniteJump()
@@ -189,7 +167,6 @@ PlayersGroup:AddToggle("InfiniteJump", {
     end
 })
 
--- ----- ПРОХОЖДЕНИЕ СКВОЗЬ СТЕНЫ (NOCLIP) -----
 local noclipActive = false
 local noclipConnection = nil
 local function startNoclip()
@@ -223,12 +200,8 @@ PlayersGroup:AddToggle("Noclip", {
     end
 })
 
--- ==================================================
--- ВКЛАДКА DEFENSE (ЗАЩИТА)
--- ==================================================
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
--- ----- АНТИ ГРАБ -----
 local LocalPlayer = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -271,7 +244,6 @@ DefenseGroup:AddToggle("AntiGrab", {
     end
 })
 
--- ----- АНТИ ЛАГ -----
 local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
 local antiLagActive = false
 local function setupAntiLag()
@@ -295,12 +267,8 @@ AntiLagGroup:AddToggle("AntiLag", {
     end
 })
 
--- ==================================================
--- ВКЛАДКА SMILE (ПРИКОЛЫ)
--- ==================================================
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ----- ЛАГ СЕРВЕРА -----
 local lagActive = false
 local lagPower = 100
 local lagConnection = nil
@@ -354,17 +322,14 @@ SmileGroup:AddToggle("LagToggle", {
 })
 
 -- ==================================================
--- ВКЛАДКА TARGET BLOB (БЛОБМАН КИК)
+-- ВКЛАДКА TARGET BLOB (LOOP KICK)
 -- ==================================================
-local TargetBlobGroup = Tabs.TargetBlob:AddLeftGroupbox("Блобман действия")
-local TargetSelectGroup = Tabs.TargetBlob:AddRightGroupbox("Выбор цели и действия")
+local TargetBlobGroup = Tabs.TargetBlob:AddLeftGroupbox("Блобман кик")
+local TargetSelectGroup = Tabs.TargetBlob:AddRightGroupbox("Выбор цели")
 
 local selectedBlobTarget = nil
-local selectedAction = "Кик"
-local actionActive = false
-local actionConnection = nil
+local kickLoopEnabled = false
 
--- Функция получения списка игроков (кроме себя)
 local function getPlayerList()
     local players = {}
     local localPlayer = game.Players.LocalPlayer
@@ -376,31 +341,20 @@ local function getPlayerList()
     return players
 end
 
--- Выпадающий список игроков
 local playerDropdown = TargetSelectGroup:AddDropdown("BlobTargetSelect", {
     Text = "Выберите игрока",
     Values = getPlayerList(),
     Default = 1,
     Callback = function(Value)
         selectedBlobTarget = game:GetService("Players"):FindFirstChild(Value)
-        applyLabel:Set("Цель: " .. (selectedBlobTarget and selectedBlobTarget.Name or "не выбран"))
+        if applyLabel then
+            applyLabel:Set("Цель: " .. (selectedBlobTarget and selectedBlobTarget.Name or "не выбран"))
+        end
     end
 })
 
--- Текст "Цель:"
-local applyLabel = TargetSelectGroup:AddLabel("Цель: " .. (selectedBlobTarget and selectedBlobTarget.Name or "не выбран"))
+local applyLabel = TargetSelectGroup:AddLabel("Цель: не выбран")
 
--- Выпадающий список действий
-local actionDropdown = TargetSelectGroup:AddDropdown("BlobActionSelect", {
-    Text = "Выберите действие",
-    Values = {"Кик", "Убить", "Зафиксировать"},
-    Default = 1,
-    Callback = function(Value)
-        selectedAction = Value
-    end
-})
-
--- Функция обновления списка игроков
 local function refreshPlayerList()
     local newList = getPlayerList()
     playerDropdown:SetValues(newList)
@@ -413,7 +367,6 @@ local function refreshPlayerList()
     end
 end
 
--- Автообновление при входе/выходе игрока
 game:GetService("Players").PlayerAdded:Connect(function()
     task.wait(0.5)
     refreshPlayerList()
@@ -425,11 +378,17 @@ end)
 
 refreshPlayerList()
 
--- ========== КИК БЛОБМАНОМ (РАБОТАЕТ) ==========
-local function doKick(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then 
-        Library:Notify({Title = "Ошибка", Description = "Цель не найдена", Duration = 3})
-        return false
+-- LOOP KICK
+local function startKickLoop()
+    kickLoopEnabled = true
+    local target = selectedBlobTarget
+    
+    if not target then
+        kickLoopEnabled = false
+        if Toggles.LoopKickToggle then
+            Toggles.LoopKickToggle:SetValue(false)
+        end
+        return
     end
     
     local char = game.Players.LocalPlayer.Character
@@ -437,135 +396,119 @@ local function doKick(targetPlayer)
     local seat = hum and hum.SeatPart
     
     if not seat or seat.Parent.Name ~= "CreatureBlobman" then
-        Library:Notify({Title = "Ошибка", Description = "Сядь на блобмана", Duration = 3})
-        return false
-    end
-    
-    local blob = seat.Parent
-    local blobRoot = blob:FindFirstChild("HumanoidRootPart") or blob.PrimaryPart
-    local scriptObj = blob:FindFirstChild("BlobmanSeatAndOwnerScript")
-    local CG = scriptObj and scriptObj:FindFirstChild("CreatureGrab")
-    local CD = scriptObj and scriptObj:FindFirstChild("CreatureDrop")
-    local R_Det = blob:FindFirstChild("RightDetector")
-    local R_Weld = R_Det and (R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld"))
-    local SavedPos = blobRoot.CFrame
-    local tChar = targetPlayer.Character
-    local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
-    
-    if not tRoot then return false
-    
-    -- Подтягиваем цель
-    local bringStart = tick()
-    while tick() - bringStart < 0.35 do
-        blobRoot.CFrame = tRoot.CFrame
-        blobRoot.Velocity = Vector3.zero
-        pcall(function()
-            if CG and R_Det then
-                CG:FireServer(R_Det, tRoot, R_Weld)
-            end
-            ReplicatedStorage.GrabEvents.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
-            ReplicatedStorage.GrabEvents.SetNetworkOwner:FireServer(tRoot, blobRoot.CFrame)
-        end)
-        task.wait()
-    end
-    
-    blobRoot.CFrame = SavedPos
-    blobRoot.Velocity = Vector3.zero
-    task.wait(0.05)
-    
-    -- Кик
-    local lockPos = SavedPos * CFrame.new(0, 23, 0)
-    tRoot.CFrame = lockPos
-    tRoot.Velocity = Vector3.zero
-    tRoot.RotVelocity = Vector3.zero
-    
-    pcall(function()
-        if R_Det then
-            local weld = R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld")
-            if weld then
-                CD:FireServer(weld)
-            end
+        kickLoopEnabled = false
+        if Toggles.LoopKickToggle then
+            Toggles.LoopKickToggle:SetValue(false)
         end
-        ReplicatedStorage.GrabEvents.DestroyGrabLine:FireServer(tRoot)
-        if R_Det then
-            CG:FireServer(R_Det, tRoot, R_Weld)
-        end
-        ReplicatedStorage.GrabEvents.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
-    end)
-    
-    return true
-end
-
--- Заглушки для других действий
-local function doKill(targetPlayer)
-    Library:Notify({Title = "Убить", Description = "Функция в разработке", Duration = 2})
-    return false
-end
-
-local function doFixate(targetPlayer)
-    Library:Notify({Title = "Зафиксировать", Description = "Функция в разработке", Duration = 2})
-    return false
-end
-
--- Выполнение выбранного действия
-local function executeAction()
-    if not selectedBlobTarget then
-        Library:Notify({Title = "Ошибка", Description = "Выберите цель", Duration = 3})
         return
     end
     
-    if selectedAction == "Кик" then
-        doKick(selectedBlobTarget)
-    elseif selectedAction == "Убить" then
-        doKill(selectedBlobTarget)
-    elseif selectedAction == "Зафиксировать" then
-        doFixate(selectedBlobTarget)
-    end
-end
-
--- Цикл для повторяющегося действия (если тоггл включён)
-local function startActionLoop()
-    if actionConnection then actionConnection:Disconnect() end
-    actionConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if actionActive then
-            executeAction()
+    task.spawn(function()
+        local RS = game:GetService("ReplicatedStorage")
+        local GE = RS:WaitForChild("GrabEvents")
+        local RunService = game:GetService("RunService")
+        local blob = seat.Parent
+        local blobRoot = blob:FindFirstChild("HumanoidRootPart") or blob.PrimaryPart
+        local scriptObj = blob:FindFirstChild("BlobmanSeatAndOwnerScript")
+        local CG = scriptObj and scriptObj:FindFirstChild("CreatureGrab")
+        local CD = scriptObj and scriptObj:FindFirstChild("CreatureDrop")
+        local R_Det = blob:FindFirstChild("RightDetector")
+        local R_Weld = R_Det and (R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld"))
+        local SavedPos = blobRoot.CFrame
+        local tChar = target.Character
+        local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
+        
+        if tRoot and blobRoot then
+            local bringStart = tick()
+            while tick() - bringStart < 0.35 do
+                if not kickLoopEnabled then break end
+                blobRoot.CFrame = tRoot.CFrame
+                blobRoot.Velocity = Vector3.zero
+                pcall(function()
+                    if CG and R_Det then
+                        CG:FireServer(R_Det, tRoot, R_Weld)
+                    end
+                    GE.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
+                    GE.SetNetworkOwner:FireServer(tRoot, blobRoot.CFrame)
+                end)
+                RunService.Heartbeat:Wait()
+            end
+            blobRoot.CFrame = SavedPos
+            blobRoot.Velocity = Vector3.zero
+            task.wait(0.05)
+        end
+        
+        local packetTimer = 0
+        while kickLoopEnabled do
+            if not target or not target.Parent or not target.Character then
+                break
+            end
+            local tChar = target.Character
+            local tRoot = tChar and tChar:FindFirstChild("HumanoidRootPart")
+            local tHum = tChar and tChar:FindFirstChild("Humanoid")
+            if tRoot and tHum and tHum.Health > 0 and blobRoot then
+                blobRoot.CFrame = SavedPos
+                blobRoot.Velocity = Vector3.zero
+                local lockPos = SavedPos * CFrame.new(0, 23, 0)
+                tRoot.CFrame = lockPos
+                tRoot.Velocity = Vector3.zero
+                tRoot.RotVelocity = Vector3.zero
+                if tick() - packetTimer > 0.05 then
+                    packetTimer = tick()
+                    pcall(function()
+                        tHum.PlatformStand = true
+                        tHum.Sit = true
+                        GE.SetNetworkOwner:FireServer(tRoot, lockPos)
+                        if R_Det then
+                            local weld = R_Det:FindFirstChild("RightWeld") or R_Det:FindFirstChildWhichIsA("Weld")
+                            if weld then
+                                CD:FireServer(weld)
+                            end
+                        end
+                        GE.DestroyGrabLine:FireServer(tRoot)
+                        if R_Det then
+                            CG:FireServer(R_Det, tRoot, R_Weld)
+                        end
+                        GE.CreateGrabLine:FireServer(tRoot, Vector3.zero, tRoot.Position, false)
+                    end)
+                end
+            else
+                blobRoot.CFrame = SavedPos
+                blobRoot.Velocity = Vector3.zero
+            end
+            if not kickLoopEnabled then break end
+            RunService.Heartbeat:Wait()
+        end
+        
+        kickLoopEnabled = false
+        if Toggles.LoopKickToggle then
+            Toggles.LoopKickToggle:SetValue(false)
+        end
+        if blobRoot then
+            blobRoot.CFrame = SavedPos
+            blobRoot.Velocity = Vector3.zero
         end
     end)
 end
 
-local function stopActionLoop()
-    if actionConnection then
-        actionConnection:Disconnect()
-        actionConnection = nil
-    end
+local function stopKickLoop()
+    kickLoopEnabled = false
 end
 
--- Тоггл включения/выключения действия
-TargetBlobGroup:AddToggle("ActionToggle", {
-    Text = "Включить действие",
+TargetBlobGroup:AddToggle("LoopKickToggle", {
+    Text = "Loop Kick (grab + blob)",
     Default = false,
-    Callback = function(Value)
-        actionActive = Value
-        if Value then
-            startActionLoop()
-            Library:Notify({Title = "Действие", Description = selectedAction .. " включён", Duration = 2})
+    Callback = function(on)
+        if on then
+            startKickLoop()
         else
-            stopActionLoop()
-            Library:Notify({Title = "Действие", Description = selectedAction .. " выключен", Duration = 2})
+            stopKickLoop()
         end
-    end
-})
-
--- Кнопка для ручного применения (один раз)
-TargetBlobGroup:AddButton({
-    Text = "Применить действие (1 раз)",
-    Func = function()
-        executeAction()
     end
 })
 
 -- ==================================================
--- ОПТИМИЗАЦИЯ (РАБОТАЕТ В ФОНЕ)
+-- ОПТИМИЗАЦИЯ
 -- ==================================================
 task.spawn(function()
     print("✅ Оптимизация запущена")
@@ -600,9 +543,6 @@ task.spawn(function()
     end
 end)
 
--- ==================================================
--- ВКЛАДКА SETTINGS (НАСТРОЙКИ UI)
--- ==================================================
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 UIGroup:AddButton("Unload", function() Library:Unload() end)
 
@@ -615,16 +555,13 @@ ThemeManager:ApplyToTab(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 SaveManager:LoadAutoloadConfig()
 
--- ==================================================
--- ОТКЛЮЧЕНИЕ ОБРАБОТКИ НА КЛИЕНТЕ (ДЛЯ ЛАГА)
--- ==================================================
 local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
 if grabEvents then
     local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
     if createGrabLine then
         createGrabLine.OnClientEvent = function() end
-        print("✅ CreateGrabLine отключён на клиенте")
+        print("✅ CreateGrabLine отключ honored на клиенте")
     end
 end
 
-print("✅ Меню загружено | Ускорение до 1000 | Лаг сервера во вкладке Smile | Кик блобманом во вкладке Target Blob")
+print("✅ Меню загружено")
