@@ -672,11 +672,14 @@ DefenseRightGroup:AddToggle("AntiVoid", {
     end
 })
 
--- Анти Лаг
+-- ==============================================
+-- АНТИ ЛАГ (НЕ УДАЛЯЕТ РЕМУТЫ, ЛАГ СЕРВЕРА РАБОТАЕТ)
+-- ==============================================
 local antiLagActive = false
 local antiLagConnection = nil
 
 local function setupAntiLag()
+    -- Только отключаем клиентский скрипт отрисовки линий
     local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
     if playerScripts then
         local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
@@ -685,6 +688,7 @@ local function setupAntiLag()
         end
     end
     
+    -- Чистим только лучи (Beam), но НЕ трогаем CreateGrabLine и ExtendGrabLine
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Beam") then
             v:Destroy()
@@ -693,28 +697,9 @@ local function setupAntiLag()
             v:Destroy()
         end
     end
-    
-    local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
-    if grabFolder then
-        local create = grabFolder:FindFirstChild("CreateGrabLine")
-        local extend = grabFolder:FindFirstChild("ExtendGrabLine")
-        if create then create:Destroy() end
-        if extend then extend:Destroy() end
-    end
 end
 
-local function startAntiLag()
-    if antiLagConnection then antiLagConnection:Disconnect() end
-    
-    setupAntiLag()
-end
-
-local function stopAntiLag()
-    if antiLagConnection then
-        antiLagConnection:Disconnect()
-        antiLagConnection = nil
-    end
-    
+local function restoreAntiLag()
     local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
     if playerScripts then
         local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
@@ -722,6 +707,36 @@ local function stopAntiLag()
             beamScript.Disabled = false
         end
     end
+end
+
+local function startAntiLag()
+    if antiLagConnection then antiLagConnection:Disconnect() end
+    
+    setupAntiLag()
+    
+    -- Постоянная очистка лучей (но ремуты не трогаем)
+    antiLagConnection = RunService.Heartbeat:Connect(function()
+        if not antiLagActive then return end
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("Beam") then
+                v:Destroy()
+            end
+            if v.Name and v.Name:lower():find("line") then
+                v:Destroy()
+            end
+        end
+    end)
+    
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Лаг включён", Duration = 2})
+end
+
+local function stopAntiLag()
+    if antiLagConnection then
+        antiLagConnection:Disconnect()
+        antiLagConnection = nil
+    end
+    restoreAntiLag()
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Лаг выключен", Duration = 2})
 end
 
 DefenseRightGroup:AddToggle("AntiLag", {
