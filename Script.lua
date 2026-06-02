@@ -346,23 +346,23 @@ DefenseLeftGroup:AddToggle("AntiGrab", {
     end
 })
 
--- Flying Reset
-local flyingResetActive = false
-local flyingResetConnection = nil
+-- Авто Ресет (бывший Flying Reset)
+local autoResetActive = false
+local autoResetConnection = nil
 
-DefenseLeftGroup:AddToggle("FlyingReset", {
-    Text = "Flying Reset",
+DefenseLeftGroup:AddToggle("AutoReset", {
+    Text = "Авто Ресет",
     Default = false,
     Callback = function(Value)
-        flyingResetActive = Value
+        autoResetActive = Value
         if Value then
             local rs = game:GetService("ReplicatedStorage")
             local CorrectionEvents = rs:FindFirstChild("GameCorrectionEvents")
             if CorrectionEvents then
                 local GameNotify = CorrectionEvents:FindFirstChild("GameCorrectionsNotify")
                 if GameNotify then
-                    flyingResetConnection = GameNotify.OnClientEvent:Connect(function(Type)
-                        if flyingResetActive and Type == "Flying" then
+                    autoResetConnection = GameNotify.OnClientEvent:Connect(function(Type)
+                        if autoResetActive and Type == "Flying" then
                             local StruggleEvent = rs:FindFirstChild("CharacterEvents") and rs.CharacterEvents:FindFirstChild("Struggle")
                             if StruggleEvent then StruggleEvent:FireServer(LocalPlayer) end
                             local char = LocalPlayer.Character
@@ -376,13 +376,13 @@ DefenseLeftGroup:AddToggle("FlyingReset", {
                     end)
                 end
             end
-            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset включён", Duration = 2})
+            Library:Notify({Title = "BROKEN SPAWN", Description = "Авто Ресет включён", Duration = 2})
         else
-            if flyingResetConnection then
-                flyingResetConnection:Disconnect()
-                flyingResetConnection = nil
+            if autoResetConnection then
+                autoResetConnection:Disconnect()
+                autoResetConnection = nil
             end
-            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset выключен", Duration = 2})
+            Library:Notify({Title = "BROKEN SPAWN", Description = "Авто Ресет выключен", Duration = 2})
         end
     end
 })
@@ -679,7 +679,6 @@ local antiLagActive = false
 local antiLagConnection = nil
 
 local function setupAntiLag()
-    -- Только отключаем клиентский скрипт отрисовки линий
     local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
     if playerScripts then
         local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
@@ -688,7 +687,6 @@ local function setupAntiLag()
         end
     end
     
-    -- Чистим только лучи (Beam), но НЕ трогаем CreateGrabLine и ExtendGrabLine
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Beam") then
             v:Destroy()
@@ -714,7 +712,6 @@ local function startAntiLag()
     
     setupAntiLag()
     
-    -- Постоянная очистка лучей (но ремуты не трогаем)
     antiLagConnection = RunService.Heartbeat:Connect(function()
         if not antiLagActive then return end
         for _, v in ipairs(workspace:GetDescendants()) do
@@ -757,7 +754,7 @@ DefenseRightGroup:AddToggle("AntiLag", {
 -- ==============================================
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- Мощность лага (старый)
+-- Мощность лага (старый) (1-200)
 local lagActive = false
 local lagPower = 100
 local lagConnection = nil
@@ -765,9 +762,8 @@ local lagConnection = nil
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
     Default = 100,
-    Min = 10,
-    Max = 300,
-    Step = 10,
+    Min = 1,
+    Max = 200,
     Rounding = 0,
     Callback = function(Value)
         lagPower = Value
@@ -808,7 +804,7 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
--- Мощность лага (Line) и Включить лаг сервера
+-- Мощность лага (Line) (1-200)
 local serverLagActive = false
 local serverLagTask = nil
 local serverLagIntensity = 150
@@ -816,8 +812,8 @@ local serverLagIntensity = 150
 local lagIntensitySlider = SmileGroup:AddSlider("LagIntensity", {
     Text = "Мощность лага (Line)",
     Default = 150,
-    Min = 10,
-    Max = 1000,
+    Min = 1,
+    Max = 200,
     Rounding = 0,
     Callback = function(Value)
         serverLagIntensity = Value
@@ -1146,7 +1142,6 @@ local function CreateHUD()
     coinsLabel.TextXAlignment = Enum.TextXAlignment.Right
     coinsLabel.Parent = mainFrame
     
-    -- Обновление FPS
     local lastTime = tick()
     local frameCount = 0
     local fps = 0
@@ -1162,7 +1157,6 @@ local function CreateHUD()
         end
     end)
     
-    -- Обновление пинга
     task.spawn(function()
         while screenGui and screenGui.Parent do
             local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
@@ -1171,7 +1165,6 @@ local function CreateHUD()
         end
     end)
     
-    -- Поиск монет
     local function findCoins()
         local player = game.Players.LocalPlayer
         if not player then return 0 end
@@ -1195,7 +1188,6 @@ local function CreateHUD()
         return 0
     end
     
-    -- Обновление монет
     task.spawn(function()
         while screenGui and screenGui.Parent do
             local coins = findCoins()
