@@ -20,10 +20,11 @@ local Tabs = {
 }
 
 -- ==============================================
--- РАЗДЕЛ: НАСТРОЙКИ ИГРОКА
+-- ВКЛАДКА PLAYERS (Настройки игрока)
 -- ==============================================
-local PlayersGroup = Tabs.Players:AddLeftGroupbox("👤 Настройки игрока")
+local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки игрока")
 
+-- 3 Вид
 local thirdPersonActive = false
 local function enableThirdPerson()
     local player = game.Players.LocalPlayer
@@ -44,16 +45,12 @@ PlayersGroup:AddToggle("ThirdPerson", {
     end
 })
 
--- ==============================================
--- РАЗДЕЛ: СПИД (УСКОРЕНИЕ)
--- ==============================================
-local SpeedGroup = Tabs.Players:AddLeftGroupbox("⚡ СПИД")
-
+-- Скорость
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
 local speedSteppedConnection = nil
-local speedSlider = SpeedGroup:AddSlider("SpeedValue", {
+local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
     Text = "Сила ускорения",
     Default = 30,
     Min = 0,
@@ -100,8 +97,8 @@ local function stopSpeedBoost()
         if hum then hum.WalkSpeed = 16 end
     end
 end
-SpeedGroup:AddToggle("SpeedToggle", {
-    Text = "Ускорение (толкает вперёд)",
+PlayersGroup:AddToggle("SpeedToggle", {
+    Text = "Ускорение",
     Default = false,
     Callback = function(Value)
         speedActive = Value
@@ -109,14 +106,10 @@ SpeedGroup:AddToggle("SpeedToggle", {
     end
 })
 
--- ==============================================
--- РАЗДЕЛ: ПРЫЖКИ
--- ==============================================
-local JumpGroup = Tabs.Players:AddLeftGroupbox("🦘 Прыжки")
-
+-- Прыжки
 local jumpActive = false
 local jumpPowerValue = 50
-local jumpSlider = JumpGroup:AddSlider("JumpPower", {
+local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
     Text = "Сила прыжка",
     Default = 50,
     Min = 0,
@@ -146,7 +139,7 @@ local function resetJumpPower()
         Library:Notify({Title = "BROKEN SPAWN", Description = "Сила прыжка сброшена до 50", Duration = 2})
     end
 end
-JumpGroup:AddToggle("JumpToggle", {
+PlayersGroup:AddToggle("JumpToggle", {
     Text = "Увеличенный прыжок",
     Default = false,
     Callback = function(Value)
@@ -171,7 +164,7 @@ end
 local function stopInfiniteJump()
     if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
 end
-JumpGroup:AddToggle("InfiniteJump", {
+PlayersGroup:AddToggle("InfiniteJump", {
     Text = "Бесконечный прыжок",
     Default = false,
     Callback = function(Value)
@@ -180,11 +173,7 @@ JumpGroup:AddToggle("InfiniteJump", {
     end
 })
 
--- ==============================================
--- РАЗДЕЛ: НОКЛИП
--- ==============================================
-local NoclipGroup = Tabs.Players:AddLeftGroupbox("🚪 Ноклип")
-
+-- Ноклип
 local noclipActive = false
 local noclipConnection = nil
 local function startNoclip()
@@ -209,8 +198,8 @@ local function stopNoclip()
         end
     end
 end
-NoclipGroup:AddToggle("Noclip", {
-    Text = "Прохождение сквозь стены",
+PlayersGroup:AddToggle("Noclip", {
+    Text = "Ноклип",
     Default = false,
     Callback = function(Value)
         noclipActive = Value
@@ -219,9 +208,9 @@ NoclipGroup:AddToggle("Noclip", {
 })
 
 -- ==============================================
--- РАЗДЕЛ: ЗАЩИТА (АНТИ ГРАБ, АНТИ ОГОНЬ, АНТИ ВЗРЫВЫ, АНТИ ЛАГ)
+-- ВКЛАДКА DEFENSE (Защита)
 -- ==============================================
-local DefenseGroup = Tabs.Defense:AddLeftGroupbox("🛡️ ЗАЩИТА")
+local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local LocalPlayer = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -229,9 +218,7 @@ local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
--- ==============================================
--- АНТИ ГРАБ (ИЗ RAGALIC)
--- ==============================================
+-- Анти Граб
 local autoStruggleConn = nil
 local antiGrabHeldConn, antiGrabStruggleConn, antiGrabHumConn
 local antiGrabRootCF, antiGrabRootPos, antiGrabHardFreeze = nil, nil, false
@@ -280,7 +267,7 @@ local function antiGrabFreezeInPlace(char)
 end
 
 DefenseGroup:AddToggle("AntiGrab", {
-    Text = "🤚 Анти Граб",
+    Text = "Анти Граб",
     Default = false,
     Callback = function(Value)
         if Value then
@@ -349,9 +336,7 @@ DefenseGroup:AddToggle("AntiGrab", {
     end
 })
 
--- ==============================================
--- АНТИ ОГОНЬ (камера на месте, возврат 0.02 сек)
--- ==============================================
+-- Анти Огонь
 local antiFireActive = false
 local antiFireConnection = nil
 local antiFireCharConn = nil
@@ -426,7 +411,7 @@ local function stopAntiFire()
 end
 
 DefenseGroup:AddToggle("AntiFire", {
-    Text = "🔥 Анти Огонь",
+    Text = "Анти Огонь",
     Default = false,
     Callback = function(Value)
         antiFireActive = Value
@@ -501,9 +486,7 @@ DefenseGroup:AddToggle("AntiFire", {
     end
 })
 
--- ==============================================
--- АНТИ ВЗРЫВЫ (Anti Explosion)
--- ==============================================
+-- Анти Взрывы
 local antiExplosionActive = false
 local antiExplosionConnection = nil
 local antiExplosionCharConn = nil
@@ -559,7 +542,7 @@ local function stopAntiExplosion()
 end
 
 DefenseGroup:AddToggle("AntiExplosion", {
-    Text = "💥 Анти Взрывы",
+    Text = "Анти Взрывы",
     Default = false,
     Callback = function(Value)
         antiExplosionActive = Value
@@ -582,10 +565,8 @@ DefenseGroup:AddToggle("AntiExplosion", {
     end
 })
 
--- ==============================================
--- АНТИ ЛАГ
--- ==============================================
-local AntiLagGroup = Tabs.Defense:AddRightGroupbox("📉 Анти Лаг")
+-- Анти Лаг
+local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
 local antiLagActive = false
 local function setupAntiLag()
     local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
@@ -609,9 +590,9 @@ AntiLagGroup:AddToggle("AntiLag", {
 })
 
 -- ==============================================
--- РАЗДЕЛ: ПРИКОЛЫ
+-- ВКЛАДКА SMILE (Приколы)
 -- ==============================================
-local SmileGroup = Tabs.Smile:AddLeftGroupbox("😂 Приколы")
+local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
 local lagActive = false
 local lagPower = 100
@@ -669,7 +650,7 @@ SmileGroup:AddToggle("LagToggle", {
 -- ОПТИМИЗАЦИЯ
 -- ==============================================
 task.spawn(function()
-    print("✅ Оптимизация запущена")
+    print("Оптимизация запущена")
     local lighting = game:GetService("Lighting")
     lighting.GlobalShadows = false
     lighting.Brightness = 1
@@ -721,8 +702,8 @@ if grabEvents then
     local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
     if createGrabLine then
         createGrabLine.OnClientEvent = function() end
-        print("✅ CreateGrabLine отключён на клиенте")
+        print("CreateGrabLine отключён на клиенте")
     end
 end
 
-print("✅ Меню загружено")
+print("Меню загружено")
