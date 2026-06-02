@@ -692,13 +692,13 @@ AntiLagGroup:AddToggle("AntiLag", {
 -- ==============================================
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ЛАГ СЕРВЕРА УБИЙЦА
+-- ЛАГ СЕРВЕРА УБИЙЦА (старый)
 local lagActive = false
 local lagPower = 100
 local lagConnection = nil
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
-    Text = "Мощность лага убийцы",
+    Text = "Мощность лага",
     Default = 100,
     Min = 10,
     Max = 300,
@@ -740,6 +740,86 @@ SmileGroup:AddToggle("LagToggle", {
     Callback = function(Value)
         lagActive = Value
         if Value then startLag() else stopLag() end
+    end
+})
+
+-- ==============================================
+-- ЛАГ СЕРВЕРА (SERVER LAG LINE) НОВЫЙ
+-- ==============================================
+local serverLagActive = false
+local serverLagTask = nil
+local serverLagIntensity = 150
+
+local lagIntensitySlider = SmileGroup:AddSlider("LagIntensity", {
+    Text = "Мощность лага (Line)",
+    Default = 150,
+    Min = 10,
+    Max = 1000,
+    Rounding = 0,
+    Callback = function(Value)
+        serverLagIntensity = Value
+        if serverLagActive then
+            serverLagActive = false
+            task.wait(0.1)
+            serverLagActive = true
+            if serverLagTask then task.cancel(serverLagTask) end
+            serverLagTask = task.spawn(function()
+                ServerLagFunction(serverLagIntensity)
+            end)
+        end
+    end
+})
+
+local function ServerLagFunction(intensity)
+    local players = game:GetService("Players")
+    local rs = game:GetService("ReplicatedStorage")
+    
+    local grabEvents = rs:FindFirstChild("GrabEvents")
+    if not grabEvents then
+        Library:Notify({Title = "Ошибка", Description = "GrabEvents не найден", Duration = 3})
+        return
+    end
+    
+    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
+    if not createGrabLine then
+        Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
+        return
+    end
+    
+    while serverLagActive do
+        for i = 1, intensity do
+            for _, player in pairs(players:GetPlayers()) do
+                if player.Character then
+                    local torso = player.Character:FindFirstChild("Torso") or player.Character:FindFirstChild("UpperTorso") or player.Character:FindFirstChild("HumanoidRootPart")
+                    if torso then
+                        pcall(function()
+                            createGrabLine:FireServer(torso, torso.CFrame)
+                        end)
+                    end
+                end
+            end
+        end
+        task.wait(1)
+    end
+end
+
+SmileGroup:AddToggle("ServerLagToggle", {
+    Text = "Включить лаг сервера",
+    Default = false,
+    Callback = function(Value)
+        serverLagActive = Value
+        if Value then
+            serverLagTask = task.spawn(function()
+                ServerLagFunction(serverLagIntensity)
+            end)
+            Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. serverLagIntensity .. ")", Duration = 2})
+        else
+            if serverLagTask then
+                task.cancel(serverLagTask)
+                serverLagTask = nil
+            end
+            Library:Notify({Title = "Лаг сервера", Description = "Выключен", Duration = 2})
+        end
     end
 })
 
