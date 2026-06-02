@@ -566,25 +566,59 @@ DefenseGroup:AddToggle("AntiExplosion", {
 })
 
 -- ==============================================
--- УБРАТЬ УБИВАЮЩУЮ ЗОНУ (БЕЗ ТЕЛЕПОРТА)
+-- УБРАТЬ УБИВАЮЩУЮ ЗОНУ + ПОДКИДЫВАНИЕ ИЗ ВОДЫ
 -- ==============================================
 local antiVoidActive = false
+local antiVoidConnection = nil
 
 local function startAntiVoid()
-    -- Просто отключаем зону смерти
+    if antiVoidConnection then antiVoidConnection:Disconnect() end
+    
     game.Workspace.FallenPartsDestroyHeight = -9e99
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Убивающая зона убрана", Duration = 2})
+    
+    antiVoidConnection = RunService.Heartbeat:Connect(function()
+        if not antiVoidActive then return end
+        
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        local hum = char:FindFirstChild("Humanoid")
+        if not hum then return end
+        
+        local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+        if torso then
+            local raycastParams = RaycastParams.new()
+            raycastParams.FilterDescendantsInstances = {char}
+            local rayResult = workspace:Raycast(torso.Position, Vector3.new(0, -2, 0), raycastParams)
+            
+            if rayResult and rayResult.Instance and (rayResult.Instance.Name:lower():find("water") or rayResult.Instance.Name:lower():find("ocean")) then
+                hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+            end
+        end
+        
+        if hrp.Position.Y < -100 then
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
+        end
+    end)
+    
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Режим воды включён", Duration = 2})
 end
 
 local function stopAntiVoid()
-    -- Возвращаем стандартную зону
+    if antiVoidConnection then
+        antiVoidConnection:Disconnect()
+        antiVoidConnection = nil
+    end
     game.Workspace.FallenPartsDestroyHeight = -50
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Убивающая зона восстановлена", Duration = 2})
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Режим воды выключен", Duration = 2})
 end
 
 local AntiVoidGroup = Tabs.Defense:AddRightGroupbox("Анти Войд")
 AntiVoidGroup:AddToggle("AntiVoid", {
-    Text = "Убрать убивающую зону",
+    Text = "Режим воды",
     Default = false,
     Callback = function(Value)
         antiVoidActive = Value
@@ -669,61 +703,85 @@ AntiLagGroup:AddToggle("AntiLag", {
 })
 
 -- ==============================================
--- ВКЛАДКА SMILE (Приколы)
+-- ЛАГ КИЛЕР (AUTO DETECT + NOTIFY)
 -- ==============================================
-local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
+local lagKillerActive = true
+local lastNotifyTime = 0
+local lagSpamCount = 0
+local lagCheckConnection = nil
 
-local lagActive = false
-local lagPower = 100
-local lagConnection = nil
-
-local lagSlider = SmileGroup:AddSlider("LagPower", {
-    Text = "Мощность лага",
-    Default = 100,
-    Min = 10,
-    Max = 300,
-    Step = 10,
-    Rounding = 0,
-    Callback = function(Value)
-        lagPower = Value
+local function startLagKiller()
+    if lagCheckConnection then lagCheckConnection:Disconnect() end
+    
+    local fakeEvent = Instance.new("RemoteEvent")
+    fakeEvent.Name = "LagDetector"
+    fakeEvent.Parent = ReplicatedStorage
+    
+    local originalCreateGrabLine = nil
+    local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
+    if grabFolder then
+        originalCreateGrabLine = grabFolder:FindFirstChild("CreateGrabLine")
     end
-})
-
-local function startLag()
-    if lagConnection then lagConnection:Disconnect() end
-    local createGrabLine = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("CreateGrabLine")
-    if not createGrabLine then
-        Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
-        return
-    end
-    lagConnection = game:GetService("RunService").Heartbeat:Connect(function()
-        if lagActive then
-            for i = 1, lagPower do
-                pcall(function()
-                    createGrabLine:FireServer(workspace.CurrentCamera.CFrame.Position, CFrame.new())
-                end)
+    
+    if originalCreateGrabLine and originalCreateGrabLine.OnClientEvent then
+        local oldFunction = originalCreateGrabLine.OnClientEvent
+        originalCreateGrabLine.OnClientEvent = function(...)
+            lagSpamCount = lagSpamCount + 1
+            
+            if lagSpamCount > 10 then
+                local now = tick()
+                if now - lastNotifyTime > 6 then
+                    lastNotifyTime = now
+                    Library:Notify({
+                        Title = "ЛАГ КИЛЕР",
+                        Description = "⚠️ Обнаружен спам CreateGrabLine! Кто-то лагает сервер!",
+                        Duration = 4
+                    })
+                end
+            end
+            
+            task.delay(2, function()
+                lagSpamCount = math.max(0, lagSpamCount - 5)
+            end)
+            
+            if oldFunction then
+                oldFunction(...)
             end
         end
-    end)
-    Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. lagPower .. ")", Duration = 3})
+    end
+    
+    local originalExtendGrabLine = nil
+    if grabFolder then
+        originalExtendGrabLine = grabFolder:FindFirstChild("ExtendGrabLine")
+        if originalExtendGrabLine and originalExtendGrabLine.OnClientEvent then
+            local oldExtendFunction = originalExtendGrabLine.OnClientEvent
+            originalExtendGrabLine.OnClientEvent = function(data)
+                if type(data) == "string" and #data > 500 then
+                    local now = tick()
+                    if now - lastNotifyTime > 6 then
+                        lastNotifyTime = now
+                        Library:Notify({
+                            Title = "ЛАГ КИЛЕР",
+                            Description = "⚠️ Обнаружен пакетный лаг! Размер: " .. math.floor(#data/1024) .. " KB",
+                            Duration = 4
+                        })
+                    end
+                end
+                
+                if oldExtendFunction then
+                    oldExtendFunction(data)
+                end
+            end
+        end
+    end
+    
+    print("✅ Лаг Килер активирован")
 end
 
-local function stopLag()
-    if lagConnection then
-        lagConnection:Disconnect()
-        lagConnection = nil
-    end
-    Library:Notify({Title = "Лаг сервера", Description = "Выключен", Duration = 2})
-end
-
-SmileGroup:AddToggle("LagToggle", {
-    Text = "Включить лаг сервера",
-    Default = false,
-    Callback = function(Value)
-        lagActive = Value
-        if Value then startLag() else stopLag() end
-    end
-})
+task.spawn(function()
+    task.wait(3)
+    startLagKiller()
+end)
 
 -- ==============================================
 -- ХОЖДЕНИЕ ПО ВОДЕ (Water Walk)
