@@ -208,8 +208,72 @@ local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
--- ИСПРАВЛЕННЫЙ АНТИ ГРАБ (как в Ragalic - без анкоринга, без падений)
+-- ==============================================
+-- АНТИ ГРАБ ИЗ RAGALIC (ПОЛНОСТЬЮ СКОПИРОВАН)
+-- ==============================================
 local autoStruggleConn = nil
+local antiGrabExplosionConn, antiGrabHeldConn, antiGrabStruggleConn, antiGrabHumConn, antiGrabAnchorConn
+local antiGrabRootCF, antiGrabRootPos, antiGrabHardFreeze = nil, nil, false
+
+local function antiGrabUnfreeze(char)
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Anchored = false
+        if hrp:FindFirstChild("FreezeJoint") then
+            hrp.FreezeJoint:Destroy()
+        end
+    end
+    antiGrabHardFreeze = false
+    if antiGrabAnchorConn then
+        antiGrabAnchorConn:Disconnect()
+        antiGrabAnchorConn = nil
+    end
+end
+
+local function antiGrabFreezeInPlace(char)
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    antiGrabRootCF = hrp.CFrame
+    antiGrabRootPos = hrp.Position
+    antiGrabHardFreeze = true
+    if not hrp:FindFirstChild("FreezeJoint") then
+        local align = Instance.new("AlignPosition")
+        align.Name = "FreezeJoint"
+        align.Mode = Enum.PositionAlignmentMode.OneAttachment
+        align.MaxForce = 1e6
+        align.MaxVelocity = 0
+        align.Responsiveness = 200
+        local att = Instance.new("Attachment", hrp)
+        align.Attachment0 = att
+        align.Position = antiGrabRootPos
+        align.Parent = hrp
+    end
+    antiGrabAnchorConn = RunService.Heartbeat:Connect(function()
+        if antiGrabHardFreeze and hrp then
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            hrp.CFrame = antiGrabRootCF
+        end
+    end)
+end
+
+local function antiGrabReconnect()
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hum = char:WaitForChild("Humanoid")
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    local fp = hrp:FindFirstChild("FirePlayerPart")
+    if fp then fp:Destroy() end
+    if antiGrabHumConn then antiGrabHumConn:Disconnect() end
+    antiGrabHumConn = hum.Changed:Connect(function(p)
+        if p == "Sit" and hum.Sit then
+            if not (hum.SeatPart and tostring(hum.SeatPart.Parent) == "CreatureBlobman") then
+                hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                hum.Sit = false
+            end
+        end
+    end)
+end
+
 DefenseGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
@@ -220,27 +284,64 @@ DefenseGroup:AddToggle("AntiGrab", {
                 local char = LocalPlayer.Character
                 if char and char.Head and char.Head:FindFirstChild("PartOwner") then
                     task.spawn(function()
-                        -- Только Struggle и Ragdoll, БЕЗ Anchored (как в Ragalic)
-                        if Struggle then 
-                            pcall(function() Struggle:FireServer(LocalPlayer) end)
-                        end
-                        -- Добавляем регдолл для лучшей защиты (как в Ragalic)
-                        local hrp = char:FindFirstChild("HumanoidRootPart")
-                        if hrp then
-                            pcall(function() 
-                                ReplicatedStorage.CharacterEvents.RagdollRemote:FireServer(hrp, 0)
-                            end)
+                        if Struggle then pcall(function() Struggle:FireServer(LocalPlayer) end) end
+                        pcall(function() ReplicatedStorage.GameCorrectionEvents.StopAllVelocity:FireServer() end)
+                        for _, part in pairs(char:GetChildren()) do
+                            if part:IsA("BasePart") then part.Anchored = true end
                         end
                         local held = LocalPlayer:FindFirstChild("IsHeld")
-                        while held and held.Value do
-                            if Struggle then Struggle:FireServer(LocalPlayer) end
-                            task.wait()
+                        while held and held.Value do task.wait() end
+                        for _, part in pairs(char:GetChildren()) do
+                            if part:IsA("BasePart") then part.Anchored = false end
                         end
                     end)
                 end
             end)
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            local hum = char:WaitForChild("Humanoid")
+            local hrp = char:WaitForChild("HumanoidRootPart")
+            local head = char:WaitForChild("Head")
+            if antiGrabHumConn then antiGrabHumConn:Disconnect() end
+            antiGrabHumConn = hum.Changed:Connect(function(p)
+                if p == "Sit" and hum.Sit then
+                    if not (hum.SeatPart and tostring(hum.SeatPart.Parent) == "CreatureBlobman") then
+                        hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                        hum.Sit = false
+                    end
+                end
+            end)
+            antiGrabHeldConn = LocalPlayer:FindFirstChild("IsHeld").Changed:Connect(function(heldState)
+                if heldState then
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("Head") and char.Head:FindFirstChild("PartOwner") then
+                        task.spawn(function()
+                            if Struggle then Struggle:FireServer(LocalPlayer) end
+                        end)
+                    end
+                end
+            end)
+            antiGrabStruggleConn = RunService.Heartbeat:Connect(function()
+                local char = LocalPlayer.Character
+                if char and char.Head and char.Head:FindFirstChild("PartOwner") then
+                    if Struggle then Struggle:FireServer(LocalPlayer) end
+                end
+            end)
         else
             if autoStruggleConn then autoStruggleConn:Disconnect() end
+            if antiGrabHeldConn then antiGrabHeldConn:Disconnect() end
+            if antiGrabStruggleConn then antiGrabStruggleConn:Disconnect() end
+            if antiGrabHumConn then antiGrabHumConn:Disconnect() end
+            autoStruggleConn = nil
+            antiGrabHeldConn = nil
+            antiGrabStruggleConn = nil
+            antiGrabHumConn = nil
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in pairs(char:GetChildren()) do
+                    if part:IsA("BasePart") then part.Anchored = false end
+                end
+            end
+            antiGrabUnfreeze(char)
         end
     end
 })
