@@ -368,7 +368,7 @@ local function startAntiFire()
                     if pb and pb:IsA("BasePart") then
                         local safeCF = pb.CFrame
                         me:SetPrimaryPartCFrame(safeCF)
-                        task.wait(0.001)
+                        task.wait(0.0001)
                         
                         local firePart = me:FindFirstChild("FirePlayerPart", true)
                         if firePart then
@@ -386,7 +386,7 @@ local function startAntiFire()
                             end
                         end
                         
-                        task.wait(0.001)
+                        task.wait(0.0001)
                         if me and me.PrimaryPart and antiFireActive then
                             me:SetPrimaryPartCFrame(oldCF)
                         end
@@ -419,7 +419,7 @@ DefenseGroup:AddToggle("AntiFire", {
             startAntiFire()
             if antiFireCharConn then antiFireCharConn:Disconnect() end
             antiFireCharConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
-                task.wait(0.1)
+                task.wait(0.05)
                 if antiFireActive then
                     if antiFireConnection then antiFireConnection:Disconnect() end
                     local hum = newChar:WaitForChild("Humanoid")
@@ -444,7 +444,7 @@ DefenseGroup:AddToggle("AntiFire", {
                                     if pb and pb:IsA("BasePart") then
                                         local safeCF = pb.CFrame
                                         me:SetPrimaryPartCFrame(safeCF)
-                                        task.wait(0.001)
+                                        task.wait(0.0001)
                                         
                                         local firePart = me:FindFirstChild("FirePlayerPart", true)
                                         if firePart then
@@ -462,7 +462,7 @@ DefenseGroup:AddToggle("AntiFire", {
                                             end
                                         end
                                         
-                                        task.wait(0.001)
+                                        task.wait(0.0001)
                                         if me and me.PrimaryPart and antiFireActive then
                                             me:SetPrimaryPartCFrame(oldCF)
                                         end
