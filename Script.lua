@@ -620,33 +620,13 @@ AntiVoidGroup:AddToggle("AntiVoid", {
 })
 
 -- ==============================================
--- АНТИ ЛАГ
+-- АНТИ ЛАГ (ИЗ POLAR HUB - ОПТИМИЗИРОВАННЫЙ)
 -- ==============================================
 local antiLagActive = false
 local antiLagConnection = nil
-local createGrabLineCopy = nil
-local extendGrabLineCopy = nil
 
 local function setupAntiLag()
-    local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
-    if grabFolder then
-        local create = grabFolder:FindFirstChild("CreateGrabLine")
-        local extend = grabFolder:FindFirstChild("ExtendGrabLine")
-        
-        -- Сохраняем оригиналы если нужно восстановить
-        if not createGrabLineCopy and create then
-            createGrabLineCopy = create:Clone()
-        end
-        if not extendGrabLineCopy and extend then
-            extendGrabLineCopy = extend:Clone()
-        end
-        
-        -- Удаляем ремуты
-        if create then create:Destroy() end
-        if extend then extend:Destroy() end
-    end
-    
-    -- Отключаем скрипт CharacterAndBeamMove (главная фишка из Ragalic)
+    -- Отключаем скрипт CharacterAndBeamMove (как в POLAR HUB)
     local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
     if playerScripts then
         local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
@@ -657,32 +637,21 @@ local function setupAntiLag()
     
     -- Удаляем все лучи и линии
     for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Beam") or v.Name:lower():find("line") then
+        if v:IsA("Beam") then
+            v:Destroy()
+        end
+        if v.Name and v.Name:lower():find("line") then
             v:Destroy()
         end
     end
-end
-
-local function restoreAntiLag()
+    
+    -- Очищаем GrabEvents (как в POLAR HUB)
     local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
     if grabFolder then
-        if createGrabLineCopy and not grabFolder:FindFirstChild("CreateGrabLine") then
-            local restored = createGrabLineCopy:Clone()
-            restored.Parent = grabFolder
-        end
-        if extendGrabLineCopy and not grabFolder:FindFirstChild("ExtendGrabLine") then
-            local restored = extendGrabLineCopy:Clone()
-            restored.Parent = grabFolder
-        end
-    end
-    
-    -- Включаем скрипт обратно
-    local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-    if playerScripts then
-        local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
-        if beamScript then
-            beamScript.Disabled = false
-        end
+        local create = grabFolder:FindFirstChild("CreateGrabLine")
+        local extend = grabFolder:FindFirstChild("ExtendGrabLine")
+        if create then create:Destroy() end
+        if extend then extend:Destroy() end
     end
 end
 
@@ -690,16 +659,6 @@ local function startAntiLag()
     if antiLagConnection then antiLagConnection:Disconnect() end
     
     setupAntiLag()
-    
-    -- Постоянная очистка лучей (как в Ragalic)
-    antiLagConnection = RunService.Heartbeat:Connect(function()
-        if not antiLagActive then return end
-        for _, v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("Beam") or (v.Name and v.Name:lower():find("line")) then
-                v:Destroy()
-            end
-        end
-    end)
     
     Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Лаг включён", Duration = 2})
 end
@@ -709,7 +668,16 @@ local function stopAntiLag()
         antiLagConnection:Disconnect()
         antiLagConnection = nil
     end
-    restoreAntiLag()
+    
+    -- Восстанавливаем скрипт
+    local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+    if playerScripts then
+        local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
+        if beamScript then
+            beamScript.Disabled = false
+        end
+    end
+    
     Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Лаг выключен", Duration = 2})
 end
 
