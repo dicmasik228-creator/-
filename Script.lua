@@ -698,7 +698,7 @@ local lagPower = 100
 local lagConnection = nil
 
 local lagSlider = SmileGroup:AddSlider("LagPower", {
-    Text = "Мощность лага",
+    Text = "Мощность лага убийцы",
     Default = 100,
     Min = 10,
     Max = 300,
@@ -841,6 +841,111 @@ task.spawn(function()
         lighting.Brightness = 1
         lighting.ClockTime = 14
     end
+end)
+
+-- ==============================================
+-- PACKET LAG NOTIFY (ОБНАРУЖЕНИЕ ПАКЕТНОГО ЛАГА)
+-- ==============================================
+local lastPacketNotifyTime = 0
+local packetLagSuspects = {}
+local packetMonitorConnection = nil
+
+local function startPacketLagMonitor()
+    if packetMonitorConnection then packetMonitorConnection:Disconnect() end
+    
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local GrabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+    if not GrabEvents then return end
+    
+    local ExtendGrabLine = GrabEvents:FindFirstChild("ExtendGrabLine")
+    if not ExtendGrabLine then return end
+    
+    local originalFunction = ExtendGrabLine.OnClientEvent
+    ExtendGrabLine.OnClientEvent = function(data, ...)
+        local packetSize = 0
+        local sender = "Unknown"
+        
+        if type(data) == "string" then
+            packetSize = #data
+            local args = {...}
+            if args[1] and type(args[1]) == "string" then
+                sender = args[1]
+            elseif args[1] and type(args[1]) == "table" and args[1].Name then
+                sender = args[1].Name
+            end
+        elseif type(data) == "table" and data.Name then
+            sender = data.Name
+        end
+        
+        if packetSize > 500 then
+            local now = tick()
+            
+            if not packetLagSuspects[sender] then
+                packetLagSuspects[sender] = {
+                    count = 0,
+                    maxSize = 0
+                }
+            end
+            
+            packetLagSuspects[sender].count = packetLagSuspects[sender].count + 1
+            if packetSize > packetLagSuspects[sender].maxSize then
+                packetLagSuspects[sender].maxSize = packetSize
+            end
+            
+            if now - lastPacketNotifyTime > 6 then
+                lastPacketNotifyTime = now
+                
+                local notifyText = ""
+                local totalCount = 0
+                
+                for name, data in pairs(packetLagSuspects) do
+                    totalCount = totalCount + data.count
+                end
+                
+                if totalCount > 0 then
+                    local topSuspect = nil
+                    local topCount = 0
+                    for name, data in pairs(packetLagSuspects) do
+                        if data.count > topCount then
+                            topCount = data.count
+                            topSuspect = name
+                        end
+                    end
+                    
+                    if topSuspect and topCount > 0 then
+                        local sizeKB = math.floor(packetLagSuspects[topSuspect].maxSize / 1024)
+                        notifyText = string.format(
+                            "Лагер: %s\nПакетов: %d\nРазмер: %d KB",
+                            topSuspect,
+                            topCount,
+                            sizeKB
+                        )
+                    else
+                        notifyText = string.format("Обнаружен пакетный лаг!\nВсего пакетов: %d", totalCount)
+                    end
+                    
+                    Library:Notify({
+                        Title = "PACKET LAG",
+                        Description = notifyText,
+                        Duration = 5
+                    })
+                    
+                    packetLagSuspects = {}
+                end
+            end
+        end
+        
+        if originalFunction then
+            originalFunction(data, ...)
+        end
+    end
+    
+    print("Packet Lag Notify активирован")
+end
+
+task.spawn(function()
+    task.wait(2)
+    startPacketLagMonitor()
 end)
 
 -- ==============================================
