@@ -5,7 +5,7 @@ local SaveManager = loadstring(game:HttpGet(repo .. "addons/SaveManager.lua"))()
 
 local Window = Library:CreateWindow({
     Title = "BROKEN SPAWN",
-    Footer = "by MEHKO МЕРУЛЕК",
+    Footer = "делаем",
     NotifySide = "Right",
     ShowCustomCursor = true,
 })
@@ -29,7 +29,7 @@ local thirdPersonActive = false
 local function enableThirdPerson()
     local player = game.Players.LocalPlayer
     player.CameraMode = Enum.CameraMode.Classic
-    player.CameraMaxZoomDistance = 50
+    player.CameraMaxZoomDistance = 100
     player.CameraMinZoomDistance = 0.5
 end
 local function disableThirdPerson()
