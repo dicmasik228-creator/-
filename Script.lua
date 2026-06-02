@@ -597,7 +597,6 @@ local function startAntiVoid()
         if not hrp then return end
         
         if hrp.Position.Y < VOID_THRESHOLD then
-            -- Моментальный телепорт (без задержки)
             hrp.CFrame = SPAWN_POSITION + Vector3.new(0, 3, 0)
             hrp.AssemblyLinearVelocity = Vector3.zero
             hrp.AssemblyAngularVelocity = Vector3.zero
@@ -627,17 +626,15 @@ AntiVoidGroup:AddToggle("AntiVoid", {
             stopAntiVoid()
         end
     end
-})end
 })
 
 -- ==============================================
--- АНТИ ЛАГ (ИЗ POLAR HUB - ОПТИМИЗИРОВАННЫЙ)
+-- АНТИ ЛАГ (ИЗ POLAR HUB)
 -- ==============================================
 local antiLagActive = false
 local antiLagConnection = nil
 
 local function setupAntiLag()
-    -- Отключаем скрипт CharacterAndBeamMove (как в POLAR HUB)
     local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
     if playerScripts then
         local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
@@ -646,7 +643,6 @@ local function setupAntiLag()
         end
     end
     
-    -- Удаляем все лучи и линии
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Beam") then
             v:Destroy()
@@ -656,7 +652,6 @@ local function setupAntiLag()
         end
     end
     
-    -- Очищаем GrabEvents (как в POLAR HUB)
     local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
     if grabFolder then
         local create = grabFolder:FindFirstChild("CreateGrabLine")
@@ -680,7 +675,6 @@ local function stopAntiLag()
         antiLagConnection = nil
     end
     
-    -- Восстанавливаем скрипт
     local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
     if playerScripts then
         local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
