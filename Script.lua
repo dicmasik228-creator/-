@@ -566,35 +566,45 @@ DefenseGroup:AddToggle("AntiExplosion", {
 })
 
 -- ==============================================
--- АНТИ ВОЙД (ЗАЩИТА ОТ ПАДЕНИЯ В ПУСТОТУ)
+-- АНТИ ВОЙД (МОМЕНТАЛЬНЫЙ ТЕЛЕПОРТ НА СПАВН)
 -- ==============================================
 local antiVoidActive = false
 local antiVoidConnection = nil
 
+local SPAWN_POSITION = nil
 local VOID_THRESHOLD = -50
-local SAFE_HEIGHT = 100
+
+local function findSpawnPosition()
+    local spawn = workspace:FindFirstChild("SpawnLocation")
+    if spawn then
+        return spawn.CFrame
+    end
+    return CFrame.new(0, 50, 0)
+end
 
 local function startAntiVoid()
     if antiVoidConnection then antiVoidConnection:Disconnect() end
+    
+    SPAWN_POSITION = findSpawnPosition()
     
     antiVoidConnection = RunService.Heartbeat:Connect(function()
         if not antiVoidActive then return end
         
         local char = LocalPlayer.Character
-        if not char or not char.PrimaryPart then return end
+        if not char then return end
         
-        local hrp = char.PrimaryPart
-        local pos = hrp.Position
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
         
-        if pos.Y < VOID_THRESHOLD then
-            local safePos = Vector3.new(pos.X, pos.Y + SAFE_HEIGHT, pos.Z)
-            hrp.CFrame = CFrame.new(safePos)
+        if hrp.Position.Y < VOID_THRESHOLD then
+            -- Моментальный телепорт (без задержки)
+            hrp.CFrame = SPAWN_POSITION + Vector3.new(0, 3, 0)
             hrp.AssemblyLinearVelocity = Vector3.zero
             hrp.AssemblyAngularVelocity = Vector3.zero
         end
     end)
     
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Войд включён", Duration = 2})
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Войд включён (моментальный)", Duration = 2})
 end
 
 local function stopAntiVoid()
@@ -617,6 +627,7 @@ AntiVoidGroup:AddToggle("AntiVoid", {
             stopAntiVoid()
         end
     end
+})end
 })
 
 -- ==============================================
