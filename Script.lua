@@ -1051,5 +1051,126 @@ if grabEvents then
         print("CreateGrabLine отключён на клиенте")
     end
 end
+-- ==============================================
+-- ИНДИКАТОР FPS, PING, МОНЕТЫ (HUD)
+-- ==============================================
+local function CreateHUD()
+    -- Удаляем старый если есть
+    if _G.HUD then
+        _G.HUD:Destroy()
+    end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "BrokenSpawnHUD"
+    screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.Parent = game:GetService("CoreGui")
+    
+    _G.HUD = screenGui
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.BackgroundTransparency = 1
+    mainFrame.Position = UDim2.new(1, -140, 0, 10)
+    mainFrame.Size = UDim2.new(0, 130, 0, 65)
+    mainFrame.Parent = screenGui
+    
+    local fpsLabel = Instance.new("TextLabel")
+    fpsLabel.BackgroundTransparency = 1
+    fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    fpsLabel.TextStrokeTransparency = 0.5
+    fpsLabel.Font = Enum.Font.SourceSansBold
+    fpsLabel.TextSize = 16
+    fpsLabel.Text = "FPS: 0"
+    fpsLabel.Position = UDim2.new(0, 0, 0, 0)
+    fpsLabel.Size = UDim2.new(1, 0, 0, 20)
+    fpsLabel.TextXAlignment = Enum.TextXAlignment.Right
+    fpsLabel.Parent = mainFrame
+    
+    local pingLabel = Instance.new("TextLabel")
+    pingLabel.BackgroundTransparency = 1
+    pingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    pingLabel.TextStrokeTransparency = 0.5
+    pingLabel.Font = Enum.Font.SourceSansBold
+    pingLabel.TextSize = 16
+    pingLabel.Text = "Ping: 0 ms"
+    pingLabel.Position = UDim2.new(0, 0, 0, 22)
+    pingLabel.Size = UDim2.new(1, 0, 0, 20)
+    pingLabel.TextXAlignment = Enum.TextXAlignment.Right
+    pingLabel.Parent = mainFrame
+    
+    local coinsLabel = Instance.new("TextLabel")
+    coinsLabel.BackgroundTransparency = 1
+    coinsLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    coinsLabel.TextStrokeTransparency = 0.5
+    coinsLabel.Font = Enum.Font.SourceSansBold
+    coinsLabel.TextSize = 16
+    coinsLabel.Text = "Монет: 0"
+    coinsLabel.Position = UDim2.new(0, 0, 0, 44)
+    coinsLabel.Size = UDim2.new(1, 0, 0, 20)
+    coinsLabel.TextXAlignment = Enum.TextXAlignment.Right
+    coinsLabel.Parent = mainFrame
+    
+    -- Обновление FPS
+    local lastTime = tick()
+    local frameCount = 0
+    local fps = 0
+    
+    game:GetService("RunService").RenderStepped:Connect(function()
+        frameCount = frameCount + 1
+        local currentTime = tick()
+        if currentTime - lastTime >= 1 then
+            fps = frameCount
+            frameCount = 0
+            lastTime = currentTime
+            fpsLabel.Text = "FPS: " .. fps
+        end
+    end)
+    
+    -- Обновление пинга
+    task.spawn(function()
+        while screenGui and screenGui.Parent do
+            local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
+            pingLabel.Text = "Ping: " .. ping .. " ms"
+            task.wait(1)
+        end
+    end)
+    
+    -- Обновление монет (если есть в игре)
+    task.spawn(function()
+        while screenGui and screenGui.Parent do
+            local player = game.Players.LocalPlayer
+            local coins = 0
+            
+            -- Поиск монет в разных местах
+            local leaderstats = player:FindFirstChild("leaderstats")
+            if leaderstats then
+                local coinsStat = leaderstats:FindFirstChild("Coins") or leaderstats:FindFirstChild("Money") or leaderstats:FindFirstChild("Cash")
+                if coinsStat then
+                    coins = coinsStat.Value
+                end
+            end
+            
+            -- Альтернативный поиск
+            if coins == 0 then
+                local stats = player:FindFirstChild("Stats") or player:FindFirstChild("Data")
+                if stats then
+                    local coinsStat = stats:FindFirstChild("Coins") or stats:FindFirstChild("Money")
+                    if coinsStat then
+                        coins = coinsStat.Value
+                    end
+                end
+            end
+            
+            coinsLabel.Text = "Монет: " .. coins
+            task.wait(0.5)
+        end
+    end)
+end
+
+-- Запускаем HUD
+task.spawn(function()
+    task.wait(1)
+    CreateHUD()
+end)
 
 print("Меню загружено")
