@@ -346,7 +346,7 @@ DefenseLeftGroup:AddToggle("AntiGrab", {
     end
 })
 
--- Авто Ресет (бывший Flying Reset)
+-- Авто Ресет
 local autoResetActive = false
 local autoResetConnection = nil
 
@@ -613,7 +613,7 @@ DefenseRightGroup:AddToggle("AntiExplosion", {
     end
 })
 
--- Удаление убийственной зоны (Режим воды)
+-- Удаление убийственной зоны
 local antiVoidActive = false
 local antiVoidConnection = nil
 
@@ -673,7 +673,122 @@ DefenseRightGroup:AddToggle("AntiVoid", {
 })
 
 -- ==============================================
--- АНТИ ЛАГ (НЕ УДАЛЯЕТ РЕМУТЫ, ЛАГ СЕРВЕРА РАБОТАЕТ)
+-- ANTI-ATTACKER (УСКОРЕННЫЙ, БЕЗ ЗАДЕРЖКИ)
+-- ==============================================
+local antiAttackerActive = false
+local antiAttackerConnection = nil
+local antiAttackerType = "Kill"  -- Kill или Fling
+
+local function TeleportAndKillForAntiAttacker(Target)
+    local PlayerTarget = Target
+    if PlayerTarget then
+        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        if Character then
+            local HRP = Character:FindFirstChild("HumanoidRootPart")
+            local BeforeTPCFrame = HRP.CFrame
+            local TargetChar = PlayerTarget.Character
+            local TargetHum = TargetChar:FindFirstChild("Humanoid")
+            local TargetHRP = TargetChar:FindFirstChild("HumanoidRootPart")
+
+            if TargetChar and TargetHum and TargetHRP and TargetHRP:FindFirstChild("FirePlayerPart") then
+                HRP.CFrame = TargetHRP.CFrame
+                local SetNetworkOwnerArgs = {[1] = TargetHRP:FindFirstChild("FirePlayerPart"), [2] = HRP.CFrame}
+                game.ReplicatedStorage:FindFirstChild("GrabEvents"):FindFirstChild("SetNetworkOwner"):FireServer(unpack(SetNetworkOwnerArgs))
+                TargetHum:ChangeState(Enum.HumanoidStateType.Dead)
+                HRP.CFrame = BeforeTPCFrame
+            end
+        end
+    end
+end
+
+local function TeleportAndFlingForAntiAttacker(Target)
+    local PlayerTarget = Target
+    if PlayerTarget then
+        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        if Character then
+            local HRP = Character:FindFirstChild("HumanoidRootPart")
+            local BeforeTPCFrame = HRP.CFrame
+            local TargetChar = PlayerTarget.Character or PlayerTarget.CharacterAdded:Wait()
+            local TargetHRP = TargetChar:FindFirstChild("HumanoidRootPart")
+            
+            if TargetChar and TargetHRP then
+                HRP.CFrame = TargetHRP.CFrame
+                local SetNetworkOwnerArgs = {[1] = TargetHRP, [2] = HRP.CFrame}
+                game.ReplicatedStorage:FindFirstChild("GrabEvents"):FindFirstChild("SetNetworkOwner"):FireServer(unpack(SetNetworkOwnerArgs))
+                
+                if not TargetHRP:FindFirstChildWhichIsA("BodyVelocity") then
+                    local BV = Instance.new("BodyVelocity", TargetHRP)
+                    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                    BV.P = 1250
+                    BV.Velocity = HRP.CFrame.LookVector * 175 + Vector3.new(0, 100, 0)
+                end
+            end
+        end
+    end
+end
+
+local function startAntiAttacker()
+    if antiAttackerConnection then antiAttackerConnection:Disconnect() end
+    
+    antiAttackerConnection = workspace.DescendantAdded:Connect(function(Descendant)
+        if Descendant.Name == "GrabParts" and antiAttackerActive then
+            -- Убрана задержка task.wait(0.05) для мгновенной реакции
+            local GrabPart = Descendant:FindFirstChild("GrabPart")
+            local WeldConstraint = GrabPart and GrabPart:FindFirstChild("WeldConstraint")
+            
+            if GrabPart and WeldConstraint then
+                local Attacker = Players:GetPlayerFromCharacter(Descendant.Parent)
+                
+                if Attacker and Attacker ~= LocalPlayer then
+                    if antiAttackerType == "Kill" then
+                        TeleportAndKillForAntiAttacker(Attacker)
+                    elseif antiAttackerType == "Fling" then
+                        TeleportAndFlingForAntiAttacker(Attacker)
+                    end
+                end
+            end
+        end
+    end)
+    
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Anti-Attacker включён (" .. antiAttackerType .. ")", Duration = 2})
+end
+
+local function stopAntiAttacker()
+    if antiAttackerConnection then
+        antiAttackerConnection:Disconnect()
+        antiAttackerConnection = nil
+    end
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Anti-Attacker выключен", Duration = 2})
+end
+
+DefenseRightGroup:AddToggle("AntiAttacker", {
+    Text = "Anti-Attacker",
+    Default = false,
+    Callback = function(Value)
+        antiAttackerActive = Value
+        if Value then
+            startAntiAttacker()
+        else
+            stopAntiAttacker()
+        end
+    end
+})
+
+-- Выбор режима
+DefenseRightGroup:AddDropdown("AntiAttackerType", {
+    Text = "Режим атаки",
+    Values = {"Kill", "Fling"},
+    Default = "Kill",
+    Callback = function(Value)
+        antiAttackerType = Value
+        if antiAttackerActive then
+            Library:Notify({Title = "BROKEN SPAWN", Description = "Режим изменён на " .. Value, Duration = 2})
+        end
+    end
+})
+
+-- ==============================================
+-- АНТИ ЛАГ (НЕ УДАЛЯЕТ РЕМУТЫ)
 -- ==============================================
 local antiLagActive = false
 local antiLagConnection = nil
