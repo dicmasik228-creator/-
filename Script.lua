@@ -743,9 +743,7 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
--- ==============================================
 -- ЛАГ СЕРВЕРА (SERVER LAG LINE) НОВЫЙ
--- ==============================================
 local serverLagActive = false
 local serverLagTask = nil
 local serverLagIntensity = 150
@@ -801,7 +799,7 @@ local function ServerLagFunction(intensity)
         end
         task.wait(1)
     end
-end
+}
 
 SmileGroup:AddToggle("ServerLagToggle", {
     Text = "Включить лаг сервера",
@@ -1029,35 +1027,11 @@ task.spawn(function()
 end)
 
 -- ==============================================
--- НАСТРОЙКИ UI
--- ==============================================
-local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
-UIGroup:AddButton("Unload", function() Library:Unload() end)
-
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:IgnoreThemeSettings()
-ThemeManager:SetFolder("BrokenSpawn")
-SaveManager:SetFolder("BrokenSpawn/Configs")
-ThemeManager:ApplyToTab(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
-SaveManager:LoadAutoloadConfig()
-
-local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
-if grabEvents then
-    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
-    if createGrabLine then
-        createGrabLine.OnClientEvent = function() end
-        print("CreateGrabLine отключён на клиенте")
-    end
-end
--- ==============================================
 -- ИНДИКАТОР FPS, PING, МОНЕТЫ (HUD)
 -- ==============================================
 local function CreateHUD()
-    -- Удаляем старый если есть
     if _G.HUD then
-        _G.HUD:Destroy()
+        pcall(function() _G.HUD:Destroy() end)
     end
     
     local screenGui = Instance.new("ScreenGui")
@@ -1135,42 +1109,67 @@ local function CreateHUD()
         end
     end)
     
-    -- Обновление монет (если есть в игре)
+    -- Поиск монет
+    local function findCoins()
+        local player = game.Players.LocalPlayer
+        if not player then return 0 end
+        
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats then
+            local coinStat = leaderstats:FindFirstChild("coin") or leaderstats:FindFirstChild("Coin") or leaderstats:FindFirstChild("coins") or leaderstats:FindFirstChild("Coins")
+            if coinStat then
+                return tonumber(coinStat.Value) or 0
+            end
+        end
+        
+        local stats = player:FindFirstChild("Stats") or player:FindFirstChild("Data")
+        if stats then
+            local coinStat = stats:FindFirstChild("coin") or stats:FindFirstChild("Coin") or stats:FindFirstChild("coins") or stats:FindFirstChild("Coins")
+            if coinStat then
+                return tonumber(coinStat.Value) or 0
+            end
+        end
+        
+        return 0
+    end
+    
+    -- Обновление монет
     task.spawn(function()
         while screenGui and screenGui.Parent do
-            local player = game.Players.LocalPlayer
-            local coins = 0
-            
-            -- Поиск монет в разных местах
-            local leaderstats = player:FindFirstChild("leaderstats")
-            if leaderstats then
-                local coinsStat = leaderstats:FindFirstChild("Coins") or leaderstats:FindFirstChild("Money") or leaderstats:FindFirstChild("Cash")
-                if coinsStat then
-                    coins = coinsStat.Value
-                end
-            end
-            
-            -- Альтернативный поиск
-            if coins == 0 then
-                local stats = player:FindFirstChild("Stats") or player:FindFirstChild("Data")
-                if stats then
-                    local coinsStat = stats:FindFirstChild("Coins") or stats:FindFirstChild("Money")
-                    if coinsStat then
-                        coins = coinsStat.Value
-                    end
-                end
-            end
-            
+            local coins = findCoins()
             coinsLabel.Text = "Монет: " .. coins
             task.wait(0.5)
         end
     end)
 end
 
--- Запускаем HUD
 task.spawn(function()
     task.wait(1)
     CreateHUD()
 end)
+
+-- ==============================================
+-- НАСТРОЙКИ UI
+-- ==============================================
+local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
+UIGroup:AddButton("Unload", function() Library:Unload() end)
+
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:IgnoreThemeSettings()
+ThemeManager:SetFolder("BrokenSpawn")
+SaveManager:SetFolder("BrokenSpawn/Configs")
+ThemeManager:ApplyToTab(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
+SaveManager:LoadAutoloadConfig()
+
+local grabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
+if grabEvents then
+    local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
+    if createGrabLine then
+        createGrabLine.OnClientEvent = function() end
+        print("CreateGrabLine отключён на клиенте")
+    end
+end
 
 print("Меню загружено")
