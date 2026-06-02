@@ -327,10 +327,11 @@ DefenseGroup:AddToggle("AntiGrab", {
 })
 
 -- ==============================================
--- КНОПКА АНТИ ОГОНЬ
+-- АНТИ ОГОНЬ (Моментальный телепорт, камера не дёргается)
 -- ==============================================
 local antiFireActive = false
 local antiFireConnection = nil
+local antiFireCharConn = nil
 
 local function startAntiFire()
     if antiFireConnection then antiFireConnection:Disconnect() end
@@ -340,47 +341,60 @@ local function startAntiFire()
     local hrp = char:WaitForChild("HumanoidRootPart")
     char.PrimaryPart = hrp
     
+    local camera = workspace.CurrentCamera
+    local originalCameraSubject = camera.CameraSubject
+    
     antiFireConnection = hum.FireDebounce.Changed:Connect(function(isBurning)
         if isBurning and antiFireActive then
-            local oldCF = hrp.CFrame
-            local plots = workspace:FindFirstChild("Plots")
-            
-            if plots and plots:FindFirstChild("Plot2") then
-                local plot2 = plots.Plot2
-                local barrier = plot2:FindFirstChild("Barrier")
-                local pb = barrier and barrier:FindFirstChild("PlotBarrier")
+            task.spawn(function()
+                local oldCF = hrp.CFrame
+                local oldCameraCF = camera.CFrame
                 
-                if pb and pb:IsA("BasePart") then
-                    local safeCF = pb.CFrame * CFrame.new(0, 6, 0)
-                    char:SetPrimaryPartCFrame(safeCF)
-                    task.wait(0.3)
-                    
-                    local firePart = char:FindFirstChild("FirePlayerPart", true)
-                    if firePart then
-                        for _, obj in ipairs(firePart:GetChildren()) do
-                            if obj:IsA("Sound") then obj:Stop() end
-                            if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
-                                obj.Enabled = false
-                            end
-                        end
-                        if firePart:FindFirstChild("CanBurn") then
-                            firePart.CanBurn.Value = false
-                        end
-                        if hum:FindFirstChild("FireDebounce") then
-                            hum.FireDebounce.Value = false
-                        end
-                    end
-                    
-                    task.wait(0.6)
-                    if char and char.PrimaryPart and antiFireActive then
-                        char:SetPrimaryPartCFrame(oldCF)
+                local safeCF = nil
+                local plots = workspace:FindFirstChild("Plots")
+                if plots and plots:FindFirstChild("Plot2") then
+                    local plot2 = plots.Plot2
+                    local barrier = plot2:FindFirstChild("Barrier")
+                    local pb = barrier and barrier:FindFirstChild("PlotBarrier")
+                    if pb and pb:IsA("BasePart") then
+                        safeCF = pb.CFrame * CFrame.new(0, 6, 0)
                     end
                 end
-            end
+                if not safeCF then
+                    safeCF = CFrame.new(0, 100, 0)
+                end
+                
+                hrp.CFrame = safeCF
+                hrp.Velocity = Vector3.zero
+                hrp.RotVelocity = Vector3.zero
+                
+                local firePart = char:FindFirstChild("FirePlayerPart", true)
+                if firePart then
+                    for _, obj in ipairs(firePart:GetChildren()) do
+                        if obj:IsA("Sound") then obj:Stop() end
+                        if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
+                            obj.Enabled = false
+                        end
+                    end
+                    if firePart:FindFirstChild("CanBurn") then
+                        firePart.CanBurn.Value = false
+                    end
+                    if hum:FindFirstChild("FireDebounce") then
+                        hum.FireDebounce.Value = false
+                    end
+                end
+                
+                hrp.CFrame = oldCF
+                hrp.Velocity = Vector3.zero
+                hrp.RotVelocity = Vector3.zero
+                
+                camera.CameraSubject = originalCameraSubject
+                camera.CFrame = oldCameraCF
+            end)
         end
     end)
     
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Огонь включён", Duration = 2})
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Огонь включён (моментальный)", Duration = 2})
 end
 
 local function stopAntiFire()
@@ -398,7 +412,6 @@ DefenseGroup:AddToggle("AntiFire", {
         antiFireActive = Value
         if Value then
             startAntiFire()
-            -- Подписываемся на перерождение
             if antiFireCharConn then antiFireCharConn:Disconnect() end
             antiFireCharConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
                 task.wait(0.5)
@@ -407,39 +420,56 @@ DefenseGroup:AddToggle("AntiFire", {
                     local hum = newChar:WaitForChild("Humanoid")
                     local hrp = newChar:WaitForChild("HumanoidRootPart")
                     newChar.PrimaryPart = hrp
+                    local camera = workspace.CurrentCamera
+                    local originalCameraSubject = camera.CameraSubject
+                    
                     antiFireConnection = hum.FireDebounce.Changed:Connect(function(isBurning)
                         if isBurning and antiFireActive then
-                            local oldCF = hrp.CFrame
-                            local plots = workspace:FindFirstChild("Plots")
-                            if plots and plots:FindFirstChild("Plot2") then
-                                local plot2 = plots.Plot2
-                                local barrier = plot2:FindFirstChild("Barrier")
-                                local pb = barrier and barrier:FindFirstChild("PlotBarrier")
-                                if pb and pb:IsA("BasePart") then
-                                    local safeCF = pb.CFrame * CFrame.new(0, 6, 0)
-                                    newChar:SetPrimaryPartCFrame(safeCF)
-                                    task.wait(0.3)
-                                    local firePart = newChar:FindFirstChild("FirePlayerPart", true)
-                                    if firePart then
-                                        for _, obj in ipairs(firePart:GetChildren()) do
-                                            if obj:IsA("Sound") then obj:Stop() end
-                                            if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
-                                                obj.Enabled = false
-                                            end
-                                        end
-                                        if firePart:FindFirstChild("CanBurn") then
-                                            firePart.CanBurn.Value = false
-                                        end
-                                        if hum:FindFirstChild("FireDebounce") then
-                                            hum.FireDebounce.Value = false
-                                        end
-                                    end
-                                    task.wait(0.6)
-                                    if newChar and newChar.PrimaryPart and antiFireActive then
-                                        newChar:SetPrimaryPartCFrame(oldCF)
+                            task.spawn(function()
+                                local oldCF = hrp.CFrame
+                                local oldCameraCF = camera.CFrame
+                                
+                                local safeCF = nil
+                                local plots = workspace:FindFirstChild("Plots")
+                                if plots and plots:FindFirstChild("Plot2") then
+                                    local plot2 = plots.Plot2
+                                    local barrier = plot2:FindFirstChild("Barrier")
+                                    local pb = barrier and barrier:FindFirstChild("PlotBarrier")
+                                    if pb and pb:IsA("BasePart") then
+                                        safeCF = pb.CFrame * CFrame.new(0, 6, 0)
                                     end
                                 end
-                            end
+                                if not safeCF then
+                                    safeCF = CFrame.new(0, 100, 0)
+                                end
+                                
+                                hrp.CFrame = safeCF
+                                hrp.Velocity = Vector3.zero
+                                hrp.RotVelocity = Vector3.zero
+                                
+                                local firePart = newChar:FindFirstChild("FirePlayerPart", true)
+                                if firePart then
+                                    for _, obj in ipairs(firePart:GetChildren()) do
+                                        if obj:IsA("Sound") then obj:Stop() end
+                                        if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
+                                            obj.Enabled = false
+                                        end
+                                    end
+                                    if firePart:FindFirstChild("CanBurn") then
+                                        firePart.CanBurn.Value = false
+                                    end
+                                    if hum:FindFirstChild("FireDebounce") then
+                                        hum.FireDebounce.Value = false
+                                    end
+                                end
+                                
+                                hrp.CFrame = oldCF
+                                hrp.Velocity = Vector3.zero
+                                hrp.RotVelocity = Vector3.zero
+                                
+                                camera.CameraSubject = originalCameraSubject
+                                camera.CFrame = oldCameraCF
+                            end)
                         end
                     end)
                 end
