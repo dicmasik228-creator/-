@@ -619,8 +619,9 @@ AntiVoidGroup:AddToggle("AntiVoid", {
     end
 })
 
+
 -- ==============================================
--- FLYING RESET (АВТО РЕСЕТ ПРИ ПОЛЁТЕ)
+-- FLYING RESET (ЗАДЕРЖКА 0.1 СЕК)
 -- ==============================================
 local flyingResetActive = false
 local flyingResetConnection = nil
@@ -645,6 +646,7 @@ FlyingResetGroup:AddToggle("FlyingResetToggle", {
             
             flyingResetConnection = GameNotify.OnClientEvent:Connect(function(Type)
                 if flyingResetActive and Type == "Flying" then
+                    task.wait(0.1) -- ЗАДЕРЖКА 0.1 СЕКУНДЫ
                     if StruggleEvent then StruggleEvent:FireServer(LocalPlayer) end
                     
                     local char = LocalPlayer.Character
@@ -656,7 +658,7 @@ FlyingResetGroup:AddToggle("FlyingResetToggle", {
                     end
                 end
             end)
-            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset включён", Duration = 2})
+            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset включён (0.1 сек)", Duration = 2})
         else
             if flyingResetConnection then
                 flyingResetConnection:Disconnect()
@@ -666,7 +668,6 @@ FlyingResetGroup:AddToggle("FlyingResetToggle", {
         end
     end
 })
-
 -- ==============================================
 -- АНТИ ЛАГ (ИЗ POLAR HUB)
 -- ==============================================
