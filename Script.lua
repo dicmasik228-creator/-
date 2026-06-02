@@ -565,27 +565,165 @@ DefenseGroup:AddToggle("AntiExplosion", {
     end
 })
 
--- Анти Лаг
-local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
+-- ==============================================
+-- АНТИ ВОЙД (ЗАЩИТА ОТ ПАДЕНИЯ В ПУСТОТУ)
+-- ==============================================
+local antiVoidActive = false
+local antiVoidConnection = nil
+
+local VOID_THRESHOLD = -50
+local SAFE_HEIGHT = 100
+
+local function startAntiVoid()
+    if antiVoidConnection then antiVoidConnection:Disconnect() end
+    
+    antiVoidConnection = RunService.Heartbeat:Connect(function()
+        if not antiVoidActive then return end
+        
+        local char = LocalPlayer.Character
+        if not char or not char.PrimaryPart then return end
+        
+        local hrp = char.PrimaryPart
+        local pos = hrp.Position
+        
+        if pos.Y < VOID_THRESHOLD then
+            local safePos = Vector3.new(pos.X, pos.Y + SAFE_HEIGHT, pos.Z)
+            hrp.CFrame = CFrame.new(safePos)
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+    
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Войд включён", Duration = 2})
+end
+
+local function stopAntiVoid()
+    if antiVoidConnection then
+        antiVoidConnection:Disconnect()
+        antiVoidConnection = nil
+    end
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Войд выключен", Duration = 2})
+end
+
+local AntiVoidGroup = Tabs.Defense:AddRightGroupbox("Анти Войд")
+AntiVoidGroup:AddToggle("AntiVoid", {
+    Text = "Анти Войд",
+    Default = false,
+    Callback = function(Value)
+        antiVoidActive = Value
+        if Value then
+            startAntiVoid()
+        else
+            stopAntiVoid()
+        end
+    end
+})
+
+-- ==============================================
+-- АНТИ ЛАГ
+-- ==============================================
 local antiLagActive = false
+local antiLagConnection = nil
+local createGrabLineCopy = nil
+local extendGrabLineCopy = nil
+
 local function setupAntiLag()
     local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
     if grabFolder then
         local create = grabFolder:FindFirstChild("CreateGrabLine")
         local extend = grabFolder:FindFirstChild("ExtendGrabLine")
+        
+        -- Сохраняем оригиналы если нужно восстановить
+        if not createGrabLineCopy and create then
+            createGrabLineCopy = create:Clone()
+        end
+        if not extendGrabLineCopy and extend then
+            extendGrabLineCopy = extend:Clone()
+        end
+        
+        -- Удаляем ремуты
         if create then create:Destroy() end
         if extend then extend:Destroy() end
     end
+    
+    -- Отключаем скрипт CharacterAndBeamMove (главная фишка из Ragalic)
+    local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+    if playerScripts then
+        local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
+        if beamScript then
+            beamScript.Disabled = true
+        end
+    end
+    
+    -- Удаляем все лучи и линии
     for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Beam") then v:Destroy() end
+        if v:IsA("Beam") or v.Name:lower():find("line") then
+            v:Destroy()
+        end
     end
 end
+
+local function restoreAntiLag()
+    local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
+    if grabFolder then
+        if createGrabLineCopy and not grabFolder:FindFirstChild("CreateGrabLine") then
+            local restored = createGrabLineCopy:Clone()
+            restored.Parent = grabFolder
+        end
+        if extendGrabLineCopy and not grabFolder:FindFirstChild("ExtendGrabLine") then
+            local restored = extendGrabLineCopy:Clone()
+            restored.Parent = grabFolder
+        end
+    end
+    
+    -- Включаем скрипт обратно
+    local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
+    if playerScripts then
+        local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
+        if beamScript then
+            beamScript.Disabled = false
+        end
+    end
+end
+
+local function startAntiLag()
+    if antiLagConnection then antiLagConnection:Disconnect() end
+    
+    setupAntiLag()
+    
+    -- Постоянная очистка лучей (как в Ragalic)
+    antiLagConnection = RunService.Heartbeat:Connect(function()
+        if not antiLagActive then return end
+        for _, v in ipairs(workspace:GetDescendants()) do
+            if v:IsA("Beam") or (v.Name and v.Name:lower():find("line")) then
+                v:Destroy()
+            end
+        end
+    end)
+    
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Лаг включён", Duration = 2})
+end
+
+local function stopAntiLag()
+    if antiLagConnection then
+        antiLagConnection:Disconnect()
+        antiLagConnection = nil
+    end
+    restoreAntiLag()
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Лаг выключен", Duration = 2})
+end
+
+local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
 AntiLagGroup:AddToggle("AntiLag", {
     Text = "Анти Лаг",
     Default = false,
     Callback = function(Value)
         antiLagActive = Value
-        if Value then setupAntiLag() end
+        if Value then
+            startAntiLag()
+        else
+            stopAntiLag()
+        end
     end
 })
 
@@ -643,6 +781,72 @@ SmileGroup:AddToggle("LagToggle", {
     Callback = function(Value)
         lagActive = Value
         if Value then startLag() else stopLag() end
+    end
+})
+
+-- ==============================================
+-- ХОЖДЕНИЕ ПО ВОДЕ (Water Walk)
+-- ==============================================
+local waterWalkActive = false
+local waterWalkParts = {}
+
+local function setupWaterWalk()
+    local oceanModel = workspace:FindFirstChild("Map")
+    if oceanModel then
+        local alwaysHere = oceanModel:FindFirstChild("AlwaysHereTweenedObjects")
+        if alwaysHere then
+            local ocean = alwaysHere:FindFirstChild("Ocean")
+            if ocean then
+                local object = ocean:FindFirstChild("Object")
+                if object then
+                    local objectModel = object:FindFirstChild("ObjectModel")
+                    if objectModel then
+                        for _, child in pairs(objectModel:GetChildren()) do
+                            if child:IsA("BasePart") and child.Name == "Ocean" then
+                                table.insert(waterWalkParts, {
+                                    part = child,
+                                    originalCollide = child.CanCollide
+                                })
+                                child.CanCollide = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function restoreWaterWalk()
+    for _, data in ipairs(waterWalkParts) do
+        if data.part and data.part.Parent then
+            data.part.CanCollide = data.originalCollide
+        end
+    end
+    waterWalkParts = {}
+end
+
+local function startWaterWalk()
+    setupWaterWalk()
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Хождение по воде включено", Duration = 2})
+end
+
+local function stopWaterWalk()
+    restoreWaterWalk()
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Хождение по воде выключено", Duration = 2})
+end
+
+local WaterWalkGroup = Tabs.Smile:AddLeftGroupbox("Вода")
+WaterWalkGroup:AddToggle("WaterWalk", {
+    Text = "Хождение по воде",
+    Default = false,
+    Callback = function(Value)
+        waterWalkActive = Value
+        if Value then
+            startWaterWalk()
+        else
+            stopWaterWalk()
+        end
     end
 })
 
