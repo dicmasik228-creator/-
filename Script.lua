@@ -566,57 +566,25 @@ DefenseGroup:AddToggle("AntiExplosion", {
 })
 
 -- ==============================================
--- АНТИ ВОЙД (МОМЕНТАЛЬНЫЙ ТЕЛЕПОРТ НА СПАВН)
+-- УБРАТЬ УБИВАЮЩУЮ ЗОНУ (БЕЗ ТЕЛЕПОРТА)
 -- ==============================================
 local antiVoidActive = false
-local antiVoidConnection = nil
-
-local SPAWN_POSITION = nil
-local VOID_THRESHOLD = -50
-
-local function findSpawnPosition()
-    local spawn = workspace:FindFirstChild("SpawnLocation")
-    if spawn then
-        return spawn.CFrame
-    end
-    return CFrame.new(0, 50, 0)
-end
 
 local function startAntiVoid()
-    if antiVoidConnection then antiVoidConnection:Disconnect() end
-    
-    SPAWN_POSITION = findSpawnPosition()
-    
-    antiVoidConnection = RunService.Heartbeat:Connect(function()
-        if not antiVoidActive then return end
-        
-        local char = LocalPlayer.Character
-        if not char then return end
-        
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
-        
-        if hrp.Position.Y < VOID_THRESHOLD then
-            hrp.CFrame = SPAWN_POSITION + Vector3.new(0, 3, 0)
-            hrp.AssemblyLinearVelocity = Vector3.zero
-            hrp.AssemblyAngularVelocity = Vector3.zero
-        end
-    end)
-    
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Войд включён (моментальный)", Duration = 2})
+    -- Просто отключаем зону смерти
+    game.Workspace.FallenPartsDestroyHeight = -9e99
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Убивающая зона убрана", Duration = 2})
 end
 
 local function stopAntiVoid()
-    if antiVoidConnection then
-        antiVoidConnection:Disconnect()
-        antiVoidConnection = nil
-    end
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Войд выключен", Duration = 2})
+    -- Возвращаем стандартную зону
+    game.Workspace.FallenPartsDestroyHeight = -50
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Убивающая зона восстановлена", Duration = 2})
 end
 
 local AntiVoidGroup = Tabs.Defense:AddRightGroupbox("Анти Войд")
 AntiVoidGroup:AddToggle("AntiVoid", {
-    Text = "Анти Войд",
+    Text = "Убрать убивающую зону",
     Default = false,
     Callback = function(Value)
         antiVoidActive = Value
