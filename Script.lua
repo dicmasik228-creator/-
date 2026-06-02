@@ -327,7 +327,7 @@ DefenseGroup:AddToggle("AntiGrab", {
 })
 
 -- ==============================================
--- АНТИ ОГОНЬ (ИЗ RAGALIC, задержка 0.08 сек)
+-- АНТИ ОГОНЬ (ПРЯМО В БАРЬЕР)
 -- ==============================================
 local antiFireActive = false
 local antiFireConnection = nil
@@ -353,7 +353,7 @@ local function startAntiFire()
                 local pb = barrier and barrier:FindFirstChild("PlotBarrier")
                 
                 if pb and pb:IsA("BasePart") then
-                    local safeCF = pb.CFrame * CFrame.new(0, 6, 0)
+                    local safeCF = pb.CFrame  -- ПРЯМО В БАРЬЕР (без смещения)
                     me:SetPrimaryPartCFrame(safeCF)
                     task.wait(0.08)
                     
@@ -381,6 +381,84 @@ local function startAntiFire()
             end
         end
     end)
+    
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Огонь включён (в барьер)", Duration = 2})
+end
+
+local function stopAntiFire()
+    if antiFireConnection then
+        antiFireConnection:Disconnect()
+        antiFireConnection = nil
+    end
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Огонь выключен", Duration = 2})
+end
+
+DefenseGroup:AddToggle("AntiFire", {
+    Text = "Анти Огонь",
+    Default = false,
+    Callback = function(Value)
+        antiFireActive = Value
+        if Value then
+            startAntiFire()
+            if antiFireCharConn then antiFireCharConn:Disconnect() end
+            antiFireCharConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
+                task.wait(0.5)
+                if antiFireActive then
+                    if antiFireConnection then antiFireConnection:Disconnect() end
+                    local hum = newChar:WaitForChild("Humanoid")
+                    local hrp = newChar:WaitForChild("HumanoidRootPart")
+                    newChar.PrimaryPart = hrp
+                    antiFireConnection = hum.FireDebounce.Changed:Connect(function(isBurning)
+                        if isBurning and antiFireActive then
+                            local me = newChar
+                            local oldCF = hrp.CFrame
+                            local plots = workspace:FindFirstChild("Plots")
+                            
+                            if plots and plots:FindFirstChild("Plot2") then
+                                local plot2 = plots.Plot2
+                                local barrier = plot2:FindFirstChild("Barrier")
+                                local pb = barrier and barrier:FindFirstChild("PlotBarrier")
+                                
+                                if pb and pb:IsA("BasePart") then
+                                    local safeCF = pb.CFrame  -- ПРЯМО В БАРЬЕР
+                                    me:SetPrimaryPartCFrame(safeCF)
+                                    task.wait(0.08)
+                                    
+                                    local firePart = me:FindFirstChild("FirePlayerPart", true)
+                                    if firePart then
+                                        for _, obj in ipairs(firePart:GetChildren()) do
+                                            if obj:IsA("Sound") then obj:Stop() end
+                                            if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
+                                                obj.Enabled = false
+                                            end
+                                        end
+                                        if firePart:FindFirstChild("CanBurn") then
+                                            firePart.CanBurn.Value = false
+                                        end
+                                        if hum:FindFirstChild("FireDebounce") then
+                                            hum.FireDebounce.Value = false
+                                        end
+                                    end
+                                    
+                                    task.wait(0.08)
+                                    if me and me.PrimaryPart and antiFireActive then
+                                        me:SetPrimaryPartCFrame(oldCF)
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                end
+            end)
+        else
+            stopAntiFire()
+            if antiFireCharConn then
+                antiFireCharConn:Disconnect()
+                antiFireCharConn = nil
+            end
+        end
+    end
+})
     
     Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Огонь включён (0.08 сек)", Duration = 2})
 end
