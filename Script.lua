@@ -208,12 +208,11 @@ local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
--- ==============================================
--- АНТИ ГРАБ ИЗ RAGALIC (ПОЛНОСТЬЮ СКОПИРОВАН)
--- ==============================================
+-- АНТИ ГРАБ ИЗ RAGALIC
 local autoStruggleConn = nil
-local antiGrabExplosionConn, antiGrabHeldConn, antiGrabStruggleConn, antiGrabHumConn, antiGrabAnchorConn
+local antiGrabHeldConn, antiGrabStruggleConn, antiGrabHumConn
 local antiGrabRootCF, antiGrabRootPos, antiGrabHardFreeze = nil, nil, false
+local antiGrabAnchorConn = nil
 
 local function antiGrabUnfreeze(char)
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -257,23 +256,6 @@ local function antiGrabFreezeInPlace(char)
     end)
 end
 
-local function antiGrabReconnect()
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local hum = char:WaitForChild("Humanoid")
-    local hrp = char:WaitForChild("HumanoidRootPart")
-    local fp = hrp:FindFirstChild("FirePlayerPart")
-    if fp then fp:Destroy() end
-    if antiGrabHumConn then antiGrabHumConn:Disconnect() end
-    antiGrabHumConn = hum.Changed:Connect(function(p)
-        if p == "Sit" and hum.Sit then
-            if not (hum.SeatPart and tostring(hum.SeatPart.Parent) == "CreatureBlobman") then
-                hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
-                hum.Sit = false
-            end
-        end
-    end)
-end
-
 DefenseGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
@@ -299,8 +281,6 @@ DefenseGroup:AddToggle("AntiGrab", {
             end)
             local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
             local hum = char:WaitForChild("Humanoid")
-            local hrp = char:WaitForChild("HumanoidRootPart")
-            local head = char:WaitForChild("Head")
             if antiGrabHumConn then antiGrabHumConn:Disconnect() end
             antiGrabHumConn = hum.Changed:Connect(function(p)
                 if p == "Sit" and hum.Sit then
@@ -342,6 +322,134 @@ DefenseGroup:AddToggle("AntiGrab", {
                 end
             end
             antiGrabUnfreeze(char)
+        end
+    end
+})
+
+-- ==============================================
+-- КНОПКА АНТИ ОГОНЬ
+-- ==============================================
+local antiFireActive = false
+local antiFireConnection = nil
+
+local function startAntiFire()
+    if antiFireConnection then antiFireConnection:Disconnect() end
+    
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hum = char:WaitForChild("Humanoid")
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    char.PrimaryPart = hrp
+    
+    antiFireConnection = hum.FireDebounce.Changed:Connect(function(isBurning)
+        if isBurning and antiFireActive then
+            local oldCF = hrp.CFrame
+            local plots = workspace:FindFirstChild("Plots")
+            
+            if plots and plots:FindFirstChild("Plot2") then
+                local plot2 = plots.Plot2
+                local barrier = plot2:FindFirstChild("Barrier")
+                local pb = barrier and barrier:FindFirstChild("PlotBarrier")
+                
+                if pb and pb:IsA("BasePart") then
+                    local safeCF = pb.CFrame * CFrame.new(0, 6, 0)
+                    char:SetPrimaryPartCFrame(safeCF)
+                    task.wait(0.3)
+                    
+                    local firePart = char:FindFirstChild("FirePlayerPart", true)
+                    if firePart then
+                        for _, obj in ipairs(firePart:GetChildren()) do
+                            if obj:IsA("Sound") then obj:Stop() end
+                            if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
+                                obj.Enabled = false
+                            end
+                        end
+                        if firePart:FindFirstChild("CanBurn") then
+                            firePart.CanBurn.Value = false
+                        end
+                        if hum:FindFirstChild("FireDebounce") then
+                            hum.FireDebounce.Value = false
+                        end
+                    end
+                    
+                    task.wait(0.6)
+                    if char and char.PrimaryPart and antiFireActive then
+                        char:SetPrimaryPartCFrame(oldCF)
+                    end
+                end
+            end
+        end
+    end)
+    
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Огонь включён", Duration = 2})
+end
+
+local function stopAntiFire()
+    if antiFireConnection then
+        antiFireConnection:Disconnect()
+        antiFireConnection = nil
+    end
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Огонь выключен", Duration = 2})
+end
+
+DefenseGroup:AddToggle("AntiFire", {
+    Text = "Анти Огонь",
+    Default = false,
+    Callback = function(Value)
+        antiFireActive = Value
+        if Value then
+            startAntiFire()
+            -- Подписываемся на перерождение
+            if antiFireCharConn then antiFireCharConn:Disconnect() end
+            antiFireCharConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
+                task.wait(0.5)
+                if antiFireActive then
+                    if antiFireConnection then antiFireConnection:Disconnect() end
+                    local hum = newChar:WaitForChild("Humanoid")
+                    local hrp = newChar:WaitForChild("HumanoidRootPart")
+                    newChar.PrimaryPart = hrp
+                    antiFireConnection = hum.FireDebounce.Changed:Connect(function(isBurning)
+                        if isBurning and antiFireActive then
+                            local oldCF = hrp.CFrame
+                            local plots = workspace:FindFirstChild("Plots")
+                            if plots and plots:FindFirstChild("Plot2") then
+                                local plot2 = plots.Plot2
+                                local barrier = plot2:FindFirstChild("Barrier")
+                                local pb = barrier and barrier:FindFirstChild("PlotBarrier")
+                                if pb and pb:IsA("BasePart") then
+                                    local safeCF = pb.CFrame * CFrame.new(0, 6, 0)
+                                    newChar:SetPrimaryPartCFrame(safeCF)
+                                    task.wait(0.3)
+                                    local firePart = newChar:FindFirstChild("FirePlayerPart", true)
+                                    if firePart then
+                                        for _, obj in ipairs(firePart:GetChildren()) do
+                                            if obj:IsA("Sound") then obj:Stop() end
+                                            if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
+                                                obj.Enabled = false
+                                            end
+                                        end
+                                        if firePart:FindFirstChild("CanBurn") then
+                                            firePart.CanBurn.Value = false
+                                        end
+                                        if hum:FindFirstChild("FireDebounce") then
+                                            hum.FireDebounce.Value = false
+                                        end
+                                    end
+                                    task.wait(0.6)
+                                    if newChar and newChar.PrimaryPart and antiFireActive then
+                                        newChar:SetPrimaryPartCFrame(oldCF)
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                end
+            end)
+        else
+            stopAntiFire()
+            if antiFireCharConn then
+                antiFireCharConn:Disconnect()
+                antiFireCharConn = nil
+            end
         end
     end
 })
