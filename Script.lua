@@ -20,9 +20,11 @@ local Tabs = {
 }
 
 -- ==============================================
--- ВКЛАДКА PLAYERS (Настройки игрока)
+-- ВКЛАДКА PLAYERS
 -- ==============================================
-local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки игрока")
+
+-- Левая группа: Настройки игрока
+local PlayersLeftGroup = Tabs.Players:AddLeftGroupbox("Настройки игрока")
 
 -- 3 Вид
 local thirdPersonActive = false
@@ -36,7 +38,7 @@ local function disableThirdPerson()
     local player = game.Players.LocalPlayer
     player.CameraMode = Enum.CameraMode.LockFirstPerson
 end
-PlayersGroup:AddToggle("ThirdPerson", {
+PlayersLeftGroup:AddToggle("ThirdPerson", {
     Text = "3 Вид",
     Default = false,
     Callback = function(Value)
@@ -45,12 +47,41 @@ PlayersGroup:AddToggle("ThirdPerson", {
     end
 })
 
--- Скорость
+-- Бесконечный прыжок
+local infiniteJumpActive = false
+local infiniteJumpConnection = nil
+local function startInfiniteJump()
+    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
+    infiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+        if infiniteJumpActive then
+            local char = game.Players.LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end)
+end
+local function stopInfiniteJump()
+    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
+end
+PlayersLeftGroup:AddToggle("InfiniteJump", {
+    Text = "Бесконечный прыжок",
+    Default = false,
+    Callback = function(Value)
+        infiniteJumpActive = Value
+        if Value then startInfiniteJump() else stopInfiniteJump() end
+    end
+})
+
+-- Правая группа: Настройки игрока
+local PlayersRightGroup = Tabs.Players:AddRightGroupbox("Настройки игрока")
+
+-- Сила ускорения (Slider)
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
 local speedSteppedConnection = nil
-local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
+local speedSlider = PlayersRightGroup:AddSlider("SpeedValue", {
     Text = "Сила ускорения",
     Default = 30,
     Min = 0,
@@ -58,6 +89,8 @@ local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
     Rounding = 0,
     Callback = function(Value) currentSpeedValue = Value end
 })
+
+-- Ускорение (Toggle)
 local function applySpeed()
     if not speedActive then return end
     local char = game.Players.LocalPlayer.Character
@@ -97,7 +130,7 @@ local function stopSpeedBoost()
         if hum then hum.WalkSpeed = 16 end
     end
 end
-PlayersGroup:AddToggle("SpeedToggle", {
+PlayersRightGroup:AddToggle("SpeedToggle", {
     Text = "Ускорение",
     Default = false,
     Callback = function(Value)
@@ -106,10 +139,10 @@ PlayersGroup:AddToggle("SpeedToggle", {
     end
 })
 
--- Прыжки
+-- Сила прыжка (Slider)
 local jumpActive = false
 local jumpPowerValue = 50
-local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
+local jumpSlider = PlayersRightGroup:AddSlider("JumpPower", {
     Text = "Сила прыжка",
     Default = 50,
     Min = 0,
@@ -125,6 +158,8 @@ local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
         end
     end
 })
+
+-- Увеличенный прыжок (Toggle)
 local function applyJumpPower()
     local char = game.Players.LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
@@ -137,37 +172,12 @@ local function resetJumpPower()
         char.Humanoid.JumpPower = 50
     end
 end
-PlayersGroup:AddToggle("JumpToggle", {
+PlayersRightGroup:AddToggle("JumpToggle", {
     Text = "Увеличенный прыжок",
     Default = false,
     Callback = function(Value)
         jumpActive = Value
         if Value then applyJumpPower() else resetJumpPower() end
-    end
-})
-
-local infiniteJumpActive = false
-local infiniteJumpConnection = nil
-local function startInfiniteJump()
-    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
-    infiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
-        if infiniteJumpActive then
-            local char = game.Players.LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end
-    end)
-end
-local function stopInfiniteJump()
-    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
-end
-PlayersGroup:AddToggle("InfiniteJump", {
-    Text = "Бесконечный прыжок",
-    Default = false,
-    Callback = function(Value)
-        infiniteJumpActive = Value
-        if Value then startInfiniteJump() else stopInfiniteJump() end
     end
 })
 
@@ -196,7 +206,7 @@ local function stopNoclip()
         end
     end
 end
-PlayersGroup:AddToggle("Noclip", {
+PlayersRightGroup:AddToggle("Noclip", {
     Text = "Ноклип",
     Default = false,
     Callback = function(Value)
@@ -208,13 +218,15 @@ PlayersGroup:AddToggle("Noclip", {
 -- ==============================================
 -- ВКЛАДКА DEFENSE (Защита)
 -- ==============================================
-local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local LocalPlayer = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
+
+-- Левая группа: Защита
+local DefenseLeftGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 -- Анти Граб
 local autoStruggleConn = nil
@@ -264,7 +276,7 @@ local function antiGrabFreezeInPlace(char)
     end)
 end
 
-DefenseGroup:AddToggle("AntiGrab", {
+DefenseLeftGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
     Callback = function(Value)
@@ -333,6 +345,50 @@ DefenseGroup:AddToggle("AntiGrab", {
         end
     end
 })
+
+-- Flying Reset
+local flyingResetActive = false
+local flyingResetConnection = nil
+
+DefenseLeftGroup:AddToggle("FlyingReset", {
+    Text = "Flying Reset",
+    Default = false,
+    Callback = function(Value)
+        flyingResetActive = Value
+        if Value then
+            local rs = game:GetService("ReplicatedStorage")
+            local CorrectionEvents = rs:FindFirstChild("GameCorrectionEvents")
+            if CorrectionEvents then
+                local GameNotify = CorrectionEvents:FindFirstChild("GameCorrectionsNotify")
+                if GameNotify then
+                    flyingResetConnection = GameNotify.OnClientEvent:Connect(function(Type)
+                        if flyingResetActive and Type == "Flying" then
+                            local StruggleEvent = rs:FindFirstChild("CharacterEvents") and rs.CharacterEvents:FindFirstChild("Struggle")
+                            if StruggleEvent then StruggleEvent:FireServer(LocalPlayer) end
+                            local char = LocalPlayer.Character
+                            if char then
+                                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                                if humanoid and humanoid.Health > 0 then
+                                    humanoid.Health = 0
+                                end
+                            end
+                        end
+                    end)
+                end
+            end
+            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset включён", Duration = 2})
+        else
+            if flyingResetConnection then
+                flyingResetConnection:Disconnect()
+                flyingResetConnection = nil
+            end
+            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset выключен", Duration = 2})
+        end
+    end
+})
+
+-- Правая группа: Защита
+local DefenseRightGroup = Tabs.Defense:AddRightGroupbox("Защита")
 
 -- Анти Огонь
 local antiFireActive = false
@@ -405,7 +461,7 @@ local function stopAntiFire()
     end
 end
 
-DefenseGroup:AddToggle("AntiFire", {
+DefenseRightGroup:AddToggle("AntiFire", {
     Text = "Анти Огонь",
     Default = false,
     Callback = function(Value)
@@ -533,7 +589,7 @@ local function stopAntiExplosion()
     end
 end
 
-DefenseGroup:AddToggle("AntiExplosion", {
+DefenseRightGroup:AddToggle("AntiExplosion", {
     Text = "Анти Взрывы",
     Default = false,
     Callback = function(Value)
@@ -557,9 +613,7 @@ DefenseGroup:AddToggle("AntiExplosion", {
     end
 })
 
--- ==============================================
--- УБРАТЬ УБИВАЮЩУЮ ЗОНУ + ПОДКИДЫВАНИЕ ИЗ ВОДЫ
--- ==============================================
+-- Удаление убийственной зоны (Режим воды)
 local antiVoidActive = false
 local antiVoidConnection = nil
 
@@ -605,9 +659,8 @@ local function stopAntiVoid()
     game.Workspace.FallenPartsDestroyHeight = -50
 end
 
-local AntiVoidGroup = Tabs.Defense:AddRightGroupbox("Анти Войд")
-AntiVoidGroup:AddToggle("AntiVoid", {
-    Text = "Режим воды",
+DefenseRightGroup:AddToggle("AntiVoid", {
+    Text = "Удаление убийственной зоны",
     Default = false,
     Callback = function(Value)
         antiVoidActive = Value
@@ -619,58 +672,7 @@ AntiVoidGroup:AddToggle("AntiVoid", {
     end
 })
 
-
--- ==============================================
--- FLYING RESET (ЗАДЕРЖКА 0.1 СЕК)
--- ==============================================
-local flyingResetActive = false
-local flyingResetConnection = nil
-
-local FlyingResetGroup = Tabs.Defense:AddRightGroupbox("Flying Reset")
-FlyingResetGroup:AddToggle("FlyingResetToggle", {
-    Text = "Flying Reset",
-    Default = false,
-    Callback = function(Value)
-        flyingResetActive = Value
-        if Value then
-            local rs = game:GetService("ReplicatedStorage")
-            local CharacterEvents = rs:FindFirstChild("CharacterEvents")
-            local StruggleEvent = CharacterEvents and CharacterEvents:FindFirstChild("Struggle")
-            local CorrectionEvents = rs:FindFirstChild("GameCorrectionEvents")
-            local GameNotify = CorrectionEvents and CorrectionEvents:FindFirstChild("GameCorrectionsNotify")
-            
-            if not GameNotify then
-                Library:Notify({Title = "Ошибка", Description = "GameCorrectionsNotify не найден", Duration = 3})
-                return
-            end
-            
-            flyingResetConnection = GameNotify.OnClientEvent:Connect(function(Type)
-                if flyingResetActive and Type == "Flying" then
-                    task.wait(0.1) -- ЗАДЕРЖКА 0.1 СЕКУНДЫ
-                    if StruggleEvent then StruggleEvent:FireServer(LocalPlayer) end
-                    
-                    local char = LocalPlayer.Character
-                    if char then
-                        local humanoid = char:FindFirstChildOfClass("Humanoid")
-                        if humanoid and humanoid.Health > 0 then
-                            humanoid.Health = 0
-                        end
-                    end
-                end
-            end)
-            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset включён (0.1 сек)", Duration = 2})
-        else
-            if flyingResetConnection then
-                flyingResetConnection:Disconnect()
-                flyingResetConnection = nil
-            end
-            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset выключен", Duration = 2})
-        end
-    end
-})
--- ==============================================
--- АНТИ ЛАГ (ИЗ POLAR HUB)
--- ==============================================
+-- Анти Лаг
 local antiLagActive = false
 local antiLagConnection = nil
 
@@ -722,8 +724,7 @@ local function stopAntiLag()
     end
 end
 
-local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
-AntiLagGroup:AddToggle("AntiLag", {
+DefenseRightGroup:AddToggle("AntiLag", {
     Text = "Анти Лаг",
     Default = false,
     Callback = function(Value)
@@ -741,7 +742,7 @@ AntiLagGroup:AddToggle("AntiLag", {
 -- ==============================================
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ЛАГ СЕРВЕРА УБИЙЦА (старый)
+-- Мощность лага (старый)
 local lagActive = false
 local lagPower = 100
 local lagConnection = nil
@@ -792,7 +793,7 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
--- ЛАГ СЕРВЕРА (SERVER LAG LINE) НОВЫЙ
+-- Мощность лага (Line) и Включить лаг сервера
 local serverLagActive = false
 local serverLagTask = nil
 local serverLagIntensity = 150
@@ -870,9 +871,7 @@ SmileGroup:AddToggle("ServerLagToggle", {
     end
 })
 
--- ==============================================
--- ХОЖДЕНИЕ ПО ВОДЕ (Water Walk)
--- ==============================================
+-- Хождение по воде
 local waterWalkActive = false
 local waterWalkParts = {}
 
@@ -920,8 +919,7 @@ local function stopWaterWalk()
     restoreWaterWalk()
 end
 
-local WaterWalkGroup = Tabs.Smile:AddLeftGroupbox("Вода")
-WaterWalkGroup:AddToggle("WaterWalk", {
+SmileGroup:AddToggle("WaterWalk", {
     Text = "Хождение по воде",
     Default = false,
     Callback = function(Value)
@@ -971,7 +969,7 @@ task.spawn(function()
 end)
 
 -- ==============================================
--- PACKET LAG NOTIFY (ОБНАРУЖЕНИЕ ПАКЕТНОГО ЛАГА)
+-- PACKET LAG NOTIFY
 -- ==============================================
 local lastPacketNotifyTime = 0
 local packetLagSuspects = {}
@@ -1073,6 +1071,128 @@ end
 task.spawn(function()
     task.wait(2)
     startPacketLagMonitor()
+end)
+
+-- ==============================================
+-- ИНДИКАТОР FPS, PING, МОНЕТЫ (HUD)
+-- ==============================================
+local function CreateHUD()
+    if _G.HUD then
+        pcall(function() _G.HUD:Destroy() end)
+    end
+    
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "BrokenSpawnHUD"
+    screenGui.ResetOnSpawn = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.Parent = game:GetService("CoreGui")
+    
+    _G.HUD = screenGui
+    
+    local mainFrame = Instance.new("Frame")
+    mainFrame.BackgroundTransparency = 1
+    mainFrame.Position = UDim2.new(1, -140, 0, 10)
+    mainFrame.Size = UDim2.new(0, 130, 0, 65)
+    mainFrame.Parent = screenGui
+    
+    local fpsLabel = Instance.new("TextLabel")
+    fpsLabel.BackgroundTransparency = 1
+    fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    fpsLabel.TextStrokeTransparency = 0.5
+    fpsLabel.Font = Enum.Font.SourceSansBold
+    fpsLabel.TextSize = 16
+    fpsLabel.Text = "FPS: 0"
+    fpsLabel.Position = UDim2.new(0, 0, 0, 0)
+    fpsLabel.Size = UDim2.new(1, 0, 0, 20)
+    fpsLabel.TextXAlignment = Enum.TextXAlignment.Right
+    fpsLabel.Parent = mainFrame
+    
+    local pingLabel = Instance.new("TextLabel")
+    pingLabel.BackgroundTransparency = 1
+    pingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    pingLabel.TextStrokeTransparency = 0.5
+    pingLabel.Font = Enum.Font.SourceSansBold
+    pingLabel.TextSize = 16
+    pingLabel.Text = "Ping: 0 ms"
+    pingLabel.Position = UDim2.new(0, 0, 0, 22)
+    pingLabel.Size = UDim2.new(1, 0, 0, 20)
+    pingLabel.TextXAlignment = Enum.TextXAlignment.Right
+    pingLabel.Parent = mainFrame
+    
+    local coinsLabel = Instance.new("TextLabel")
+    coinsLabel.BackgroundTransparency = 1
+    coinsLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    coinsLabel.TextStrokeTransparency = 0.5
+    coinsLabel.Font = Enum.Font.SourceSansBold
+    coinsLabel.TextSize = 16
+    coinsLabel.Text = "Монет: 0"
+    coinsLabel.Position = UDim2.new(0, 0, 0, 44)
+    coinsLabel.Size = UDim2.new(1, 0, 0, 20)
+    coinsLabel.TextXAlignment = Enum.TextXAlignment.Right
+    coinsLabel.Parent = mainFrame
+    
+    -- Обновление FPS
+    local lastTime = tick()
+    local frameCount = 0
+    local fps = 0
+    
+    game:GetService("RunService").RenderStepped:Connect(function()
+        frameCount = frameCount + 1
+        local currentTime = tick()
+        if currentTime - lastTime >= 1 then
+            fps = frameCount
+            frameCount = 0
+            lastTime = currentTime
+            fpsLabel.Text = "FPS: " .. fps
+        end
+    end)
+    
+    -- Обновление пинга
+    task.spawn(function()
+        while screenGui and screenGui.Parent do
+            local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
+            pingLabel.Text = "Ping: " .. ping .. " ms"
+            task.wait(1)
+        end
+    end)
+    
+    -- Поиск монет
+    local function findCoins()
+        local player = game.Players.LocalPlayer
+        if not player then return 0 end
+        
+        local leaderstats = player:FindFirstChild("leaderstats")
+        if leaderstats then
+            local coinStat = leaderstats:FindFirstChild("coin") or leaderstats:FindFirstChild("Coin") or leaderstats:FindFirstChild("coins") or leaderstats:FindFirstChild("Coins")
+            if coinStat then
+                return tonumber(coinStat.Value) or 0
+            end
+        end
+        
+        local stats = player:FindFirstChild("Stats") or player:FindFirstChild("Data")
+        if stats then
+            local coinStat = stats:FindFirstChild("coin") or stats:FindFirstChild("Coin") or stats:FindFirstChild("coins") or stats:FindFirstChild("Coins")
+            if coinStat then
+                return tonumber(coinStat.Value) or 0
+            end
+        end
+        
+        return 0
+    end
+    
+    -- Обновление монет
+    task.spawn(function()
+        while screenGui and screenGui.Parent do
+            local coins = findCoins()
+            coinsLabel.Text = "Монет: " .. coins
+            task.wait(0.5)
+        end
+    end)
+end
+
+task.spawn(function()
+    task.wait(1)
+    CreateHUD()
 end)
 
 -- ==============================================
