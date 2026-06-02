@@ -19,7 +19,10 @@ local Tabs = {
     Settings = Window:AddTab("Settings", "settings"),
 }
 
-local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки")
+-- ==============================================
+-- РАЗДЕЛ: НАСТРОЙКИ ИГРОКА
+-- ==============================================
+local PlayersGroup = Tabs.Players:AddLeftGroupbox("👤 Настройки игрока")
 
 local thirdPersonActive = false
 local function enableThirdPerson()
@@ -41,11 +44,16 @@ PlayersGroup:AddToggle("ThirdPerson", {
     end
 })
 
+-- ==============================================
+-- РАЗДЕЛ: СПИД (УСКОРЕНИЕ)
+-- ==============================================
+local SpeedGroup = Tabs.Players:AddLeftGroupbox("⚡ СПИД")
+
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
 local speedSteppedConnection = nil
-local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
+local speedSlider = SpeedGroup:AddSlider("SpeedValue", {
     Text = "Сила ускорения",
     Default = 30,
     Min = 0,
@@ -92,7 +100,7 @@ local function stopSpeedBoost()
         if hum then hum.WalkSpeed = 16 end
     end
 end
-PlayersGroup:AddToggle("SpeedToggle", {
+SpeedGroup:AddToggle("SpeedToggle", {
     Text = "Ускорение (толкает вперёд)",
     Default = false,
     Callback = function(Value)
@@ -101,9 +109,14 @@ PlayersGroup:AddToggle("SpeedToggle", {
     end
 })
 
+-- ==============================================
+-- РАЗДЕЛ: ПРЫЖКИ
+-- ==============================================
+local JumpGroup = Tabs.Players:AddLeftGroupbox("🦘 Прыжки")
+
 local jumpActive = false
 local jumpPowerValue = 50
-local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
+local jumpSlider = JumpGroup:AddSlider("JumpPower", {
     Text = "Сила прыжка",
     Default = 50,
     Min = 0,
@@ -133,7 +146,7 @@ local function resetJumpPower()
         Library:Notify({Title = "BROKEN SPAWN", Description = "Сила прыжка сброшена до 50", Duration = 2})
     end
 end
-PlayersGroup:AddToggle("JumpToggle", {
+JumpGroup:AddToggle("JumpToggle", {
     Text = "Увеличенный прыжок",
     Default = false,
     Callback = function(Value)
@@ -158,7 +171,7 @@ end
 local function stopInfiniteJump()
     if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
 end
-PlayersGroup:AddToggle("InfiniteJump", {
+JumpGroup:AddToggle("InfiniteJump", {
     Text = "Бесконечный прыжок",
     Default = false,
     Callback = function(Value)
@@ -166,6 +179,11 @@ PlayersGroup:AddToggle("InfiniteJump", {
         if Value then startInfiniteJump() else stopInfiniteJump() end
     end
 })
+
+-- ==============================================
+-- РАЗДЕЛ: НОКЛИП
+-- ==============================================
+local NoclipGroup = Tabs.Players:AddLeftGroupbox("🚪 Ноклип")
 
 local noclipActive = false
 local noclipConnection = nil
@@ -191,7 +209,7 @@ local function stopNoclip()
         end
     end
 end
-PlayersGroup:AddToggle("Noclip", {
+NoclipGroup:AddToggle("Noclip", {
     Text = "Прохождение сквозь стены",
     Default = false,
     Callback = function(Value)
@@ -200,7 +218,10 @@ PlayersGroup:AddToggle("Noclip", {
     end
 })
 
-local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
+-- ==============================================
+-- РАЗДЕЛ: ЗАЩИТА (АНТИ ГРАБ, АНТИ ОГОНЬ, АНТИ ЛАГ)
+-- ==============================================
+local DefenseGroup = Tabs.Defense:AddLeftGroupbox("🛡️ ЗАЩИТА")
 
 local LocalPlayer = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -208,7 +229,9 @@ local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
--- АНТИ ГРАБ ИЗ RAGALIC
+-- ==============================================
+-- АНТИ ГРАБ (ИЗ RAGALIC)
+-- ==============================================
 local autoStruggleConn = nil
 local antiGrabHeldConn, antiGrabStruggleConn, antiGrabHumConn
 local antiGrabRootCF, antiGrabRootPos, antiGrabHardFreeze = nil, nil, false
@@ -257,7 +280,7 @@ local function antiGrabFreezeInPlace(char)
 end
 
 DefenseGroup:AddToggle("AntiGrab", {
-    Text = "Анти Граб",
+    Text = "🤚 Анти Граб",
     Default = false,
     Callback = function(Value)
         if Value then
@@ -327,7 +350,7 @@ DefenseGroup:AddToggle("AntiGrab", {
 })
 
 -- ==============================================
--- АНТИ ОГОНЬ (возврат через 0.02 сек)
+-- АНТИ ОГОНЬ (камера на месте, возврат 0.02 сек)
 -- ==============================================
 local antiFireActive = false
 local antiFireConnection = nil
@@ -343,46 +366,55 @@ local function startAntiFire()
     
     antiFireConnection = hum.FireDebounce.Changed:Connect(function(isBurning)
         if isBurning and antiFireActive then
-            local me = char
-            local oldCF = hrp.CFrame
-            local plots = workspace:FindFirstChild("Plots")
-            
-            if plots and plots:FindFirstChild("Plot2") then
-                local plot2 = plots.Plot2
-                local barrier = plot2:FindFirstChild("Barrier")
-                local pb = barrier and barrier:FindFirstChild("PlotBarrier")
+            task.spawn(function()
+                local me = char
+                local oldCF = hrp.CFrame
+                local camera = workspace.CurrentCamera
+                local oldCameraCF = camera.CFrame
+                local oldCameraSubject = camera.CameraSubject
                 
-                if pb and pb:IsA("BasePart") then
-                    local safeCF = pb.CFrame
-                    me:SetPrimaryPartCFrame(safeCF)
-                    task.wait(0.02)
+                local plots = workspace:FindFirstChild("Plots")
+                
+                if plots and plots:FindFirstChild("Plot2") then
+                    local plot2 = plots.Plot2
+                    local barrier = plot2:FindFirstChild("Barrier")
+                    local pb = barrier and barrier:FindFirstChild("PlotBarrier")
                     
-                    local firePart = me:FindFirstChild("FirePlayerPart", true)
-                    if firePart then
-                        for _, obj in ipairs(firePart:GetChildren()) do
-                            if obj:IsA("Sound") then obj:Stop() end
-                            if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
-                                obj.Enabled = false
+                    if pb and pb:IsA("BasePart") then
+                        local safeCF = pb.CFrame
+                        me:SetPrimaryPartCFrame(safeCF)
+                        task.wait(0.02)
+                        
+                        local firePart = me:FindFirstChild("FirePlayerPart", true)
+                        if firePart then
+                            for _, obj in ipairs(firePart:GetChildren()) do
+                                if obj:IsA("Sound") then obj:Stop() end
+                                if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
+                                    obj.Enabled = false
+                                end
+                            end
+                            if firePart:FindFirstChild("CanBurn") then
+                                firePart.CanBurn.Value = false
+                            end
+                            if hum:FindFirstChild("FireDebounce") then
+                                hum.FireDebounce.Value = false
                             end
                         end
-                        if firePart:FindFirstChild("CanBurn") then
-                            firePart.CanBurn.Value = false
+                        
+                        task.wait(0.02)
+                        if me and me.PrimaryPart and antiFireActive then
+                            me:SetPrimaryPartCFrame(oldCF)
                         end
-                        if hum:FindFirstChild("FireDebounce") then
-                            hum.FireDebounce.Value = false
-                        end
-                    end
-                    
-                    task.wait(0.02)
-                    if me and me.PrimaryPart and antiFireActive then
-                        me:SetPrimaryPartCFrame(oldCF)
+                        
+                        camera.CameraSubject = oldCameraSubject
+                        camera.CFrame = oldCameraCF
                     end
                 end
-            end
+            end)
         end
     end)
     
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Огонь включён (возврат 0.02 сек)", Duration = 2})
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Огонь включён", Duration = 2})
 end
 
 local function stopAntiFire()
@@ -394,7 +426,7 @@ local function stopAntiFire()
 end
 
 DefenseGroup:AddToggle("AntiFire", {
-    Text = "Анти Огонь",
+    Text = "🔥 Анти Огонь",
     Default = false,
     Callback = function(Value)
         antiFireActive = Value
@@ -410,42 +442,51 @@ DefenseGroup:AddToggle("AntiFire", {
                     newChar.PrimaryPart = hrp
                     antiFireConnection = hum.FireDebounce.Changed:Connect(function(isBurning)
                         if isBurning and antiFireActive then
-                            local me = newChar
-                            local oldCF = hrp.CFrame
-                            local plots = workspace:FindFirstChild("Plots")
-                            
-                            if plots and plots:FindFirstChild("Plot2") then
-                                local plot2 = plots.Plot2
-                                local barrier = plot2:FindFirstChild("Barrier")
-                                local pb = barrier and barrier:FindFirstChild("PlotBarrier")
+                            task.spawn(function()
+                                local me = newChar
+                                local oldCF = hrp.CFrame
+                                local camera = workspace.CurrentCamera
+                                local oldCameraCF = camera.CFrame
+                                local oldCameraSubject = camera.CameraSubject
                                 
-                                if pb and pb:IsA("BasePart") then
-                                    local safeCF = pb.CFrame
-                                    me:SetPrimaryPartCFrame(safeCF)
-                                    task.wait(0.02)
+                                local plots = workspace:FindFirstChild("Plots")
+                                
+                                if plots and plots:FindFirstChild("Plot2") then
+                                    local plot2 = plots.Plot2
+                                    local barrier = plot2:FindFirstChild("Barrier")
+                                    local pb = barrier and barrier:FindFirstChild("PlotBarrier")
                                     
-                                    local firePart = me:FindFirstChild("FirePlayerPart", true)
-                                    if firePart then
-                                        for _, obj in ipairs(firePart:GetChildren()) do
-                                            if obj:IsA("Sound") then obj:Stop() end
-                                            if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
-                                                obj.Enabled = false
+                                    if pb and pb:IsA("BasePart") then
+                                        local safeCF = pb.CFrame
+                                        me:SetPrimaryPartCFrame(safeCF)
+                                        task.wait(0.02)
+                                        
+                                        local firePart = me:FindFirstChild("FirePlayerPart", true)
+                                        if firePart then
+                                            for _, obj in ipairs(firePart:GetChildren()) do
+                                                if obj:IsA("Sound") then obj:Stop() end
+                                                if obj:IsA("Light") or obj:IsA("ParticleEmitter") then
+                                                    obj.Enabled = false
+                                                end
+                                            end
+                                            if firePart:FindFirstChild("CanBurn") then
+                                                firePart.CanBurn.Value = false
+                                            end
+                                            if hum:FindFirstChild("FireDebounce") then
+                                                hum.FireDebounce.Value = false
                                             end
                                         end
-                                        if firePart:FindFirstChild("CanBurn") then
-                                            firePart.CanBurn.Value = false
+                                        
+                                        task.wait(0.02)
+                                        if me and me.PrimaryPart and antiFireActive then
+                                            me:SetPrimaryPartCFrame(oldCF)
                                         end
-                                        if hum:FindFirstChild("FireDebounce") then
-                                            hum.FireDebounce.Value = false
-                                        end
-                                    end
-                                    
-                                    task.wait(0.02)
-                                    if me and me.PrimaryPart and antiFireActive then
-                                        me:SetPrimaryPartCFrame(oldCF)
+                                        
+                                        camera.CameraSubject = oldCameraSubject
+                                        camera.CFrame = oldCameraCF
                                     end
                                 end
-                            end
+                            end)
                         end
                     end)
                 end
@@ -460,7 +501,10 @@ DefenseGroup:AddToggle("AntiFire", {
     end
 })
 
-local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
+-- ==============================================
+-- АНТИ ЛАГ
+-- ==============================================
+local AntiLagGroup = Tabs.Defense:AddRightGroupbox("📉 Анти Лаг")
 local antiLagActive = false
 local function setupAntiLag()
     local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
@@ -483,7 +527,10 @@ AntiLagGroup:AddToggle("AntiLag", {
     end
 })
 
-local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
+-- ==============================================
+-- РАЗДЕЛ: ПРИКОЛЫ
+-- ==============================================
+local SmileGroup = Tabs.Smile:AddLeftGroupbox("😂 Приколы")
 
 local lagActive = false
 local lagPower = 100
@@ -537,6 +584,9 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
+-- ==============================================
+-- ОПТИМИЗАЦИЯ
+-- ==============================================
 task.spawn(function()
     print("✅ Оптимизация запущена")
     local lighting = game:GetService("Lighting")
@@ -570,6 +620,9 @@ task.spawn(function()
     end
 end)
 
+-- ==============================================
+-- НАСТРОЙКИ UI
+-- ==============================================
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 UIGroup:AddButton("Unload", function() Library:Unload() end)
 
