@@ -620,6 +620,54 @@ AntiVoidGroup:AddToggle("AntiVoid", {
 })
 
 -- ==============================================
+-- FLYING RESET (АВТО РЕСЕТ ПРИ ПОЛЁТЕ)
+-- ==============================================
+local flyingResetActive = false
+local flyingResetConnection = nil
+
+local FlyingResetGroup = Tabs.Defense:AddRightGroupbox("Flying Reset")
+FlyingResetGroup:AddToggle("FlyingResetToggle", {
+    Text = "Flying Reset",
+    Default = false,
+    Callback = function(Value)
+        flyingResetActive = Value
+        if Value then
+            local rs = game:GetService("ReplicatedStorage")
+            local CharacterEvents = rs:FindFirstChild("CharacterEvents")
+            local StruggleEvent = CharacterEvents and CharacterEvents:FindFirstChild("Struggle")
+            local CorrectionEvents = rs:FindFirstChild("GameCorrectionEvents")
+            local GameNotify = CorrectionEvents and CorrectionEvents:FindFirstChild("GameCorrectionsNotify")
+            
+            if not GameNotify then
+                Library:Notify({Title = "Ошибка", Description = "GameCorrectionsNotify не найден", Duration = 3})
+                return
+            end
+            
+            flyingResetConnection = GameNotify.OnClientEvent:Connect(function(Type)
+                if flyingResetActive and Type == "Flying" then
+                    if StruggleEvent then StruggleEvent:FireServer(LocalPlayer) end
+                    
+                    local char = LocalPlayer.Character
+                    if char then
+                        local humanoid = char:FindFirstChildOfClass("Humanoid")
+                        if humanoid and humanoid.Health > 0 then
+                            humanoid.Health = 0
+                        end
+                    end
+                end
+            end)
+            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset включён", Duration = 2})
+        else
+            if flyingResetConnection then
+                flyingResetConnection:Disconnect()
+                flyingResetConnection = nil
+            end
+            Library:Notify({Title = "BROKEN SPAWN", Description = "Flying Reset выключен", Duration = 2})
+        end
+    end
+})
+
+-- ==============================================
 -- АНТИ ЛАГ (ИЗ POLAR HUB)
 -- ==============================================
 local antiLagActive = false
@@ -743,9 +791,7 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
--- ==============================================
 -- ЛАГ СЕРВЕРА (SERVER LAG LINE) НОВЫЙ
--- ==============================================
 local serverLagActive = false
 local serverLagTask = nil
 local serverLagIntensity = 150
