@@ -620,69 +620,6 @@ AntiVoidGroup:AddToggle("AntiVoid", {
 })
 
 -- ==============================================
--- АВТО РЕСЕТ (Flying Reset)
--- ==============================================
-local autoResetActive = false
-local autoResetConnection = nil
-
-local function startAutoReset()
-    if autoResetConnection then autoResetConnection:Disconnect() end
-    
-    local rs = game:GetService("ReplicatedStorage")
-    local CorrectionEvents = rs:FindFirstChild("GameCorrectionEvents")
-    if not CorrectionEvents then 
-        Library:Notify({Title = "Ошибка", Description = "GameCorrectionEvents не найден", Duration = 3})
-        return
-    end
-    
-    local GameNotify = CorrectionEvents:FindFirstChild("GameCorrectionsNotify")
-    if not GameNotify then
-        Library:Notify({Title = "Ошибка", Description = "GameCorrectionsNotify не найден", Duration = 3})
-        return
-    end
-    
-    autoResetConnection = GameNotify.OnClientEvent:Connect(function(Type)
-        if autoResetActive and Type == "Flying" then
-            local StruggleEvent = rs:FindFirstChild("CharacterEvents") and rs.CharacterEvents:FindFirstChild("Struggle")
-            if StruggleEvent then StruggleEvent:FireServer(LocalPlayer) end
-            
-            local char = LocalPlayer.Character
-            if char then
-                local hum = char:FindFirstChildOfClass("Humanoid")
-                if hum and hum.Health > 0 then
-                    hum.Health = 0
-                    hum:BreakJoints()
-                end
-            end
-        end
-    end)
-    
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Авто Ресет включён", Duration = 2})
-end
-
-local function stopAutoReset()
-    if autoResetConnection then
-        autoResetConnection:Disconnect()
-        autoResetConnection = nil
-    end
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Авто Ресет выключен", Duration = 2})
-end
-
-local AutoResetGroup = Tabs.Defense:AddRightGroupbox("Авто Ресет")
-AutoResetGroup:AddToggle("AutoReset", {
-    Text = "Авто Ресет",
-    Default = false,
-    Callback = function(Value)
-        autoResetActive = Value
-        if Value then
-            startAutoReset()
-        else
-            stopAutoReset()
-        end
-    end
-})
-
--- ==============================================
 -- АНТИ ЛАГ (ИЗ POLAR HUB)
 -- ==============================================
 local antiLagActive = false
@@ -1231,7 +1168,7 @@ if grabEvents then
     local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
     if createGrabLine then
         createGrabLine.OnClientEvent = function() end
-        print("CreateGrabLine отключën на клиенте")
+        print("CreateGrabLine отключён на клиенте")
     end
 end
 
