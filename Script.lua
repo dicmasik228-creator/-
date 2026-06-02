@@ -19,12 +19,8 @@ local Tabs = {
     Settings = Window:AddTab("Settings", "settings"),
 }
 
--- ==============================================
--- ВКЛАДКА PLAYERS (Настройки игрока)
--- ==============================================
 local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки игрока")
 
--- 3 Вид
 local thirdPersonActive = false
 local function enableThirdPerson()
     local player = game.Players.LocalPlayer
@@ -45,7 +41,6 @@ PlayersGroup:AddToggle("ThirdPerson", {
     end
 })
 
--- Скорость
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
@@ -106,7 +101,6 @@ PlayersGroup:AddToggle("SpeedToggle", {
     end
 })
 
--- Прыжки
 local jumpActive = false
 local jumpPowerValue = 50
 local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
@@ -171,7 +165,6 @@ PlayersGroup:AddToggle("InfiniteJump", {
     end
 })
 
--- Ноклип
 local noclipActive = false
 local noclipConnection = nil
 local function startNoclip()
@@ -205,9 +198,6 @@ PlayersGroup:AddToggle("Noclip", {
     end
 })
 
--- ==============================================
--- ВКЛАДКА DEFENSE (Защита)
--- ==============================================
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
 local LocalPlayer = game.Players.LocalPlayer
@@ -216,7 +206,6 @@ local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
--- Анти Граб
 local autoStruggleConn = nil
 local antiGrabHeldConn, antiGrabStruggleConn, antiGrabHumConn
 local antiGrabRootCF, antiGrabRootPos, antiGrabHardFreeze = nil, nil, false
@@ -334,19 +323,16 @@ DefenseGroup:AddToggle("AntiGrab", {
     end
 })
 
--- Анти Огонь
 local antiFireActive = false
 local antiFireConnection = nil
 local antiFireCharConn = nil
 
 local function startAntiFire()
     if antiFireConnection then antiFireConnection:Disconnect() end
-    
     local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local hum = char:WaitForChild("Humanoid")
     local hrp = char:WaitForChild("HumanoidRootPart")
     char.PrimaryPart = hrp
-    
     antiFireConnection = hum.FireDebounce.Changed:Connect(function(isBurning)
         if isBurning and antiFireActive then
             task.spawn(function()
@@ -355,19 +341,15 @@ local function startAntiFire()
                 local camera = workspace.CurrentCamera
                 local oldCameraCF = camera.CFrame
                 local oldCameraSubject = camera.CameraSubject
-                
                 local plots = workspace:FindFirstChild("Plots")
-                
                 if plots and plots:FindFirstChild("Plot2") then
                     local plot2 = plots.Plot2
                     local barrier = plot2:FindFirstChild("Barrier")
                     local pb = barrier and barrier:FindFirstChild("PlotBarrier")
-                    
                     if pb and pb:IsA("BasePart") then
                         local safeCF = pb.CFrame
                         me:SetPrimaryPartCFrame(safeCF)
                         task.wait(0.00001)
-                        
                         local firePart = me:FindFirstChild("FirePlayerPart", true)
                         if firePart then
                             for _, obj in ipairs(firePart:GetChildren()) do
@@ -383,12 +365,10 @@ local function startAntiFire()
                                 hum.FireDebounce.Value = false
                             end
                         end
-                        
                         task.wait(0.00001)
                         if me and me.PrimaryPart and antiFireActive then
                             me:SetPrimaryPartCFrame(oldCF)
                         end
-                        
                         camera.CameraSubject = oldCameraSubject
                         camera.CFrame = oldCameraCF
                     end
@@ -428,19 +408,15 @@ DefenseGroup:AddToggle("AntiFire", {
                                 local camera = workspace.CurrentCamera
                                 local oldCameraCF = camera.CFrame
                                 local oldCameraSubject = camera.CameraSubject
-                                
                                 local plots = workspace:FindFirstChild("Plots")
-                                
                                 if plots and plots:FindFirstChild("Plot2") then
                                     local plot2 = plots.Plot2
                                     local barrier = plot2:FindFirstChild("Barrier")
                                     local pb = barrier and barrier:FindFirstChild("PlotBarrier")
-                                    
                                     if pb and pb:IsA("BasePart") then
                                         local safeCF = pb.CFrame
                                         me:SetPrimaryPartCFrame(safeCF)
                                         task.wait(0.00001)
-                                        
                                         local firePart = me:FindFirstChild("FirePlayerPart", true)
                                         if firePart then
                                             for _, obj in ipairs(firePart:GetChildren()) do
@@ -456,12 +432,10 @@ DefenseGroup:AddToggle("AntiFire", {
                                                 hum.FireDebounce.Value = false
                                             end
                                         end
-                                        
                                         task.wait(0.00001)
                                         if me and me.PrimaryPart and antiFireActive then
                                             me:SetPrimaryPartCFrame(oldCF)
                                         end
-                                        
                                         camera.CameraSubject = oldCameraSubject
                                         camera.CFrame = oldCameraCF
                                     end
@@ -481,48 +455,38 @@ DefenseGroup:AddToggle("AntiFire", {
     end
 })
 
--- Анти Взрывы
 local antiExplosionActive = false
 local antiExplosionConnection = nil
 local antiExplosionCharConn = nil
 
 local function startAntiExplosion()
     if antiExplosionConnection then antiExplosionConnection:Disconnect() end
-    
     local function onExplosion(model)
         if not antiExplosionActive then return end
         if model.Name ~= "Part" then return end
-        
         local char = LocalPlayer.Character
         if not char then return end
-        
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-        
         local mag = (model.Position - hrp.Position).Magnitude
         if mag <= 25 then
             hrp.Anchored = true
-            
             for _, limb in pairs({"Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
                 local part = char:FindFirstChild(limb)
                 if part and part:FindFirstChild("RagdollLimbPart") then
                     part.RagdollLimbPart.CanCollide = false
                 end
             end
-            
             task.wait(0.05)
-            
             for _, limb in pairs({"Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
                 local part = char:FindFirstChild(limb)
                 if part and part:FindFirstChild("RagdollLimbPart") then
                     part.RagdollLimbPart.CanCollide = true
                 end
             end
-            
             hrp.Anchored = false
         end
     end
-    
     antiExplosionConnection = workspace.ChildAdded:Connect(onExplosion)
 end
 
@@ -557,40 +521,29 @@ DefenseGroup:AddToggle("AntiExplosion", {
     end
 })
 
--- ==============================================
--- УБРАТЬ УБИВАЮЩУЮ ЗОНУ + ПОДКИДЫВАНИЕ ИЗ ВОДЫ
--- ==============================================
 local antiVoidActive = false
 local antiVoidConnection = nil
 
 local function startAntiVoid()
     if antiVoidConnection then antiVoidConnection:Disconnect() end
-    
     game.Workspace.FallenPartsDestroyHeight = -9e99
-    
     antiVoidConnection = RunService.Heartbeat:Connect(function()
         if not antiVoidActive then return end
-        
         local char = LocalPlayer.Character
         if not char then return end
-        
         local hrp = char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-        
         local hum = char:FindFirstChild("Humanoid")
         if not hum then return end
-        
         local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
         if torso then
             local raycastParams = RaycastParams.new()
             raycastParams.FilterDescendantsInstances = {char}
             local rayResult = workspace:Raycast(torso.Position, Vector3.new(0, -2, 0), raycastParams)
-            
             if rayResult and rayResult.Instance and (rayResult.Instance.Name:lower():find("water") or rayResult.Instance.Name:lower():find("ocean")) then
                 hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
             end
         end
-        
         if hrp.Position.Y < -100 then
             hrp.Velocity = Vector3.new(hrp.Velocity.X, 50, hrp.Velocity.Z)
         end
@@ -619,9 +572,6 @@ AntiVoidGroup:AddToggle("AntiVoid", {
     end
 })
 
--- ==============================================
--- АНТИ ЛАГ (ИЗ POLAR HUB)
--- ==============================================
 local antiLagActive = false
 local antiLagConnection = nil
 
@@ -633,7 +583,6 @@ local function setupAntiLag()
             beamScript.Disabled = true
         end
     end
-    
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Beam") then
             v:Destroy()
@@ -642,7 +591,6 @@ local function setupAntiLag()
             v:Destroy()
         end
     end
-    
     local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
     if grabFolder then
         local create = grabFolder:FindFirstChild("CreateGrabLine")
@@ -654,7 +602,6 @@ end
 
 local function startAntiLag()
     if antiLagConnection then antiLagConnection:Disconnect() end
-    
     setupAntiLag()
 end
 
@@ -663,7 +610,6 @@ local function stopAntiLag()
         antiLagConnection:Disconnect()
         antiLagConnection = nil
     end
-    
     local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
     if playerScripts then
         local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
@@ -687,12 +633,8 @@ AntiLagGroup:AddToggle("AntiLag", {
     end
 })
 
--- ==============================================
--- ВКЛАДКА SMILE (Приколы)
--- ==============================================
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- ЛАГ СЕРВЕРА УБИЙЦА (старый)
 local lagActive = false
 local lagPower = 100
 local lagConnection = nil
@@ -743,7 +685,6 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
--- ЛАГ СЕРВЕРА (SERVER LAG LINE) НОВЫЙ
 local serverLagActive = false
 local serverLagTask = nil
 local serverLagIntensity = 150
@@ -771,19 +712,16 @@ local lagIntensitySlider = SmileGroup:AddSlider("LagIntensity", {
 local function ServerLagFunction(intensity)
     local players = game:GetService("Players")
     local rs = game:GetService("ReplicatedStorage")
-    
     local grabEvents = rs:FindFirstChild("GrabEvents")
     if not grabEvents then
         Library:Notify({Title = "Ошибка", Description = "GrabEvents не найден", Duration = 3})
         return
     end
-    
     local createGrabLine = grabEvents:FindFirstChild("CreateGrabLine")
     if not createGrabLine then
         Library:Notify({Title = "Ошибка", Description = "CreateGrabLine не найден", Duration = 3})
         return
     end
-    
     while serverLagActive do
         for i = 1, intensity do
             for _, player in pairs(players:GetPlayers()) do
@@ -821,9 +759,6 @@ SmileGroup:AddToggle("ServerLagToggle", {
     end
 })
 
--- ==============================================
--- ХОЖДЕНИЕ ПО ВОДЕ (Water Walk)
--- ==============================================
 local waterWalkActive = false
 local waterWalkParts = {}
 
@@ -885,9 +820,6 @@ WaterWalkGroup:AddToggle("WaterWalk", {
     end
 })
 
--- ==============================================
--- ОПТИМИЗАЦИЯ
--- ==============================================
 task.spawn(function()
     print("Оптимизация запущена")
     local lighting = game:GetService("Lighting")
@@ -921,28 +853,21 @@ task.spawn(function()
     end
 end)
 
--- ==============================================
--- PACKET LAG NOTIFY (ОБНАРУЖЕНИЕ ПАКЕТНОГО ЛАГА)
--- ==============================================
 local lastPacketNotifyTime = 0
 local packetLagSuspects = {}
 local packetMonitorConnection = nil
 
 local function startPacketLagMonitor()
     if packetMonitorConnection then packetMonitorConnection:Disconnect() end
-    
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local GrabEvents = ReplicatedStorage:FindFirstChild("GrabEvents")
     if not GrabEvents then return end
-    
     local ExtendGrabLine = GrabEvents:FindFirstChild("ExtendGrabLine")
     if not ExtendGrabLine then return end
-    
     local originalFunction = ExtendGrabLine.OnClientEvent
     ExtendGrabLine.OnClientEvent = function(data, ...)
         local packetSize = 0
         local sender = "Unknown"
-        
         if type(data) == "string" then
             packetSize = #data
             local args = {...}
@@ -954,32 +879,25 @@ local function startPacketLagMonitor()
         elseif type(data) == "table" and data.Name then
             sender = data.Name
         end
-        
         if packetSize > 500 then
             local now = tick()
-            
             if not packetLagSuspects[sender] then
                 packetLagSuspects[sender] = {
                     count = 0,
                     maxSize = 0
                 }
             end
-            
             packetLagSuspects[sender].count = packetLagSuspects[sender].count + 1
             if packetSize > packetLagSuspects[sender].maxSize then
                 packetLagSuspects[sender].maxSize = packetSize
             end
-            
             if now - lastPacketNotifyTime > 6 then
                 lastPacketNotifyTime = now
-                
                 local notifyText = ""
                 local totalCount = 0
-                
                 for name, data in pairs(packetLagSuspects) do
                     totalCount = totalCount + data.count
                 end
-                
                 if totalCount > 0 then
                     local topSuspect = nil
                     local topCount = 0
@@ -989,7 +907,6 @@ local function startPacketLagMonitor()
                             topSuspect = name
                         end
                     end
-                    
                     if topSuspect and topCount > 0 then
                         local sizeKB = math.floor(packetLagSuspects[topSuspect].maxSize / 1024)
                         notifyText = string.format(
@@ -1001,23 +918,19 @@ local function startPacketLagMonitor()
                     else
                         notifyText = string.format("Обнаружен пакетный лаг!\nВсего пакетов: %d", totalCount)
                     end
-                    
                     Library:Notify({
                         Title = "PACKET LAG",
                         Description = notifyText,
                         Duration = 5
                     })
-                    
                     packetLagSuspects = {}
                 end
             end
         end
-        
         if originalFunction then
             originalFunction(data, ...)
         end
     end
-    
     print("Packet Lag Notify активирован")
 end
 
@@ -1026,28 +939,21 @@ task.spawn(function()
     startPacketLagMonitor()
 end)
 
--- ==============================================
--- ИНДИКАТОР FPS, PING, МОНЕТЫ (HUD)
--- ==============================================
 local function CreateHUD()
     if _G.HUD then
         pcall(function() _G.HUD:Destroy() end)
     end
-    
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "BrokenSpawnHUD"
     screenGui.ResetOnSpawn = false
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = game:GetService("CoreGui")
-    
     _G.HUD = screenGui
-    
     local mainFrame = Instance.new("Frame")
     mainFrame.BackgroundTransparency = 1
     mainFrame.Position = UDim2.new(1, -140, 0, 10)
     mainFrame.Size = UDim2.new(0, 130, 0, 65)
     mainFrame.Parent = screenGui
-    
     local fpsLabel = Instance.new("TextLabel")
     fpsLabel.BackgroundTransparency = 1
     fpsLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -1059,7 +965,6 @@ local function CreateHUD()
     fpsLabel.Size = UDim2.new(1, 0, 0, 20)
     fpsLabel.TextXAlignment = Enum.TextXAlignment.Right
     fpsLabel.Parent = mainFrame
-    
     local pingLabel = Instance.new("TextLabel")
     pingLabel.BackgroundTransparency = 1
     pingLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1071,7 +976,6 @@ local function CreateHUD()
     pingLabel.Size = UDim2.new(1, 0, 0, 20)
     pingLabel.TextXAlignment = Enum.TextXAlignment.Right
     pingLabel.Parent = mainFrame
-    
     local coinsLabel = Instance.new("TextLabel")
     coinsLabel.BackgroundTransparency = 1
     coinsLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
@@ -1083,12 +987,9 @@ local function CreateHUD()
     coinsLabel.Size = UDim2.new(1, 0, 0, 20)
     coinsLabel.TextXAlignment = Enum.TextXAlignment.Right
     coinsLabel.Parent = mainFrame
-    
-    -- Обновление FPS
     local lastTime = tick()
     local frameCount = 0
     local fps = 0
-    
     game:GetService("RunService").RenderStepped:Connect(function()
         frameCount = frameCount + 1
         local currentTime = tick()
@@ -1099,8 +1000,6 @@ local function CreateHUD()
             fpsLabel.Text = "FPS: " .. fps
         end
     end)
-    
-    -- Обновление пинга
     task.spawn(function()
         while screenGui and screenGui.Parent do
             local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
@@ -1108,12 +1007,9 @@ local function CreateHUD()
             task.wait(1)
         end
     end)
-    
-    -- Поиск монет
     local function findCoins()
         local player = game.Players.LocalPlayer
         if not player then return 0 end
-        
         local leaderstats = player:FindFirstChild("leaderstats")
         if leaderstats then
             local coinStat = leaderstats:FindFirstChild("coin") or leaderstats:FindFirstChild("Coin") or leaderstats:FindFirstChild("coins") or leaderstats:FindFirstChild("Coins")
@@ -1121,7 +1017,6 @@ local function CreateHUD()
                 return tonumber(coinStat.Value) or 0
             end
         end
-        
         local stats = player:FindFirstChild("Stats") or player:FindFirstChild("Data")
         if stats then
             local coinStat = stats:FindFirstChild("coin") or stats:FindFirstChild("Coin") or stats:FindFirstChild("coins") or stats:FindFirstChild("Coins")
@@ -1129,11 +1024,8 @@ local function CreateHUD()
                 return tonumber(coinStat.Value) or 0
             end
         end
-        
         return 0
     end
-    
-    -- Обновление монет
     task.spawn(function()
         while screenGui and screenGui.Parent do
             local coins = findCoins()
@@ -1148,9 +1040,6 @@ task.spawn(function()
     CreateHUD()
 end)
 
--- ==============================================
--- НАСТРОЙКИ UI
--- ==============================================
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 UIGroup:AddButton("Unload", function() Library:Unload() end)
 
