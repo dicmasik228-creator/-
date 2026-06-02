@@ -208,38 +208,211 @@ local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
-local autoStruggleConn = nil
-DefenseGroup:AddToggle("AntiGrab", {
-    Text = "Анти Граб",
-    Default = false,
-    Callback = function(Value)
-        if Value then
-            if autoStruggleConn then autoStruggleConn:Disconnect() end
-            autoStruggleConn = RunService.Heartbeat:Connect(function()
-                local char = LocalPlayer.Character
-                if char and char.Head and char.Head:FindFirstChild("PartOwner") then
-                    task.spawn(function()
-                        if Struggle then pcall(function() Struggle:FireServer(LocalPlayer) end) end
-                        pcall(function() ReplicatedStorage.GameCorrectionEvents.StopAllVelocity:FireServer() end)
-                        for _, part in pairs(char:GetChildren()) do
-                            if part:IsA("BasePart") then part.Anchored = true end
-                        end
-                        local held = LocalPlayer:FindFirstChild("IsHeld")
-                        while held and held.Value do task.wait() end
-                        for _, part in pairs(char:GetChildren()) do
-                            if part:IsA("BasePart") then part.Anchored = false end
-                        end
-                    end)
+-- ==============================================
+-- SUPER ANTI GRAB (Объединение лучших механик)
+-- ==============================================
+local superAntiGrabActive = false
+local superAntiGrabHardFreeze = false
+local superAntiGrabProc = false
+local superAntiGrabAGWalk = false
+local superAntiGrabRootCF = nil
+local superAntiGrabRootPos = nil
+local superAntiGrabConnections = {}
+local superAntiGrabAnchorConn = nil
+
+local function superAntiGrabUnfreeze(char)
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Anchored = false
+        if hrp:FindFirstChild("FreezeJoint") then
+            hrp.FreezeJoint:Destroy()
+        end
+    end
+    superAntiGrabHardFreeze = false
+    if superAntiGrabAnchorConn then
+        superAntiGrabAnchorConn:Disconnect()
+        superAntiGrabAnchorConn = nil
+    end
+end
+
+local function superAntiGrabFreezeInPlace(char)
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    superAntiGrabRootCF = hrp.CFrame
+    superAntiGrabRootPos = hrp.Position
+    superAntiGrabHardFreeze = true
+    
+    if not hrp:FindFirstChild("FreezeJoint") then
+        local align = Instance.new("AlignPosition")
+        align.Name = "FreezeJoint"
+        align.Mode = Enum.PositionAlignmentMode.OneAttachment
+        align.MaxForce = 1e6
+        align.MaxVelocity = 0
+        align.Responsiveness = 200
+        local att = Instance.new("Attachment", hrp)
+        align.Attachment0 = att
+        align.Position = superAntiGrabRootPos
+        align.Parent = hrp
+    end
+    
+    superAntiGrabAnchorConn = game:GetService("RunService").Heartbeat:Connect(function()
+        if superAntiGrabHardFreeze and hrp and hrp.Parent then
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            hrp.CFrame = superAntiGrabRootCF
+        end
+    end)
+end
+
+local function superAntiGrabCleanup()
+    for name, conn in pairs(superAntiGrabConnections) do
+        if conn then
+            pcall(function() conn:Disconnect() end)
+            superAntiGrabConnections[name] = nil
+        end
+    end
+    if superAntiGrabAnchorConn then
+        pcall(function() superAntiGrabAnchorConn:Disconnect() end)
+        superAntiGrabAnchorConn = nil
+    end
+    superAntiGrabHardFreeze = false
+    superAntiGrabProc = false
+    superAntiGrabAGWalk = false
+    
+    local char = LocalPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.Anchored = false
+            if hrp:FindFirstChild("FreezeJoint") then
+                hrp.FreezeJoint:Destroy()
+            end
+        end
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.Anchored = false
+            end
+        end
+    end
+end
+
+local function superAntiGrabSetup(char)
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChild("Humanoid")
+    local head = char:FindFirstChild("Head")
+    
+    if not hrp or not hum or not head then return end
+    
+    -- Отключаем FirePlayerPart
+    local fp = hrp:FindFirstChild("FirePlayerPart")
+    if fp then fp:Destroy() end
+    
+    -- Механика: отслеживание PartOwner
+    superAntiGrabConnections["HeadChild"] = head.ChildAdded:Connect(function(PartOwner)
+        if PartOwner.Name == "PartOwner" and not superAntiGrabProc then
+            superAntiGrabProc = true
+            
+            hum.Sit = false
+            if Struggle then Struggle:FireServer(LocalPlayer) end
+            
+            -- Запускаем постоянную борьбу
+            task.spawn(function()
+                while superAntiGrabActive and head and head:FindFirstChild("PartOwner") do
+                    if Struggle then Struggle:FireServer(LocalPlayer) end
+                    pcall(function() ReplicatedStorage.CharacterEvents.RagdollRemote:FireServer(hrp, 0) end)
+                    task.wait()
                 end
             end)
-        else
-            if autoStruggleConn then autoStruggleConn:Disconnect() end
-            local char = LocalPlayer.Character
-            if char then
-                for _, part in pairs(char:GetChildren()) do
-                    if part:IsA("BasePart") then part.Anchored = false end
+            
+            -- StopAllVelocity
+            pcall(function()
+                if ReplicatedStorage.GameCorrectionEvents then
+                    ReplicatedStorage.GameCorrectionEvents.StopAllVelocity:FireServer()
+                end
+            end)
+            
+            -- Анкорим все части
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = true
                 end
             end
+            
+            -- Замораживаем на месте
+            superAntiGrabFreezeInPlace(char)
+            
+            -- Движение во время граба
+            if not superAntiGrabAGWalk then
+                superAntiGrabAGWalk = true
+                while superAntiGrabActive and LocalPlayer.IsHeld and LocalPlayer.IsHeld.Value do
+                    if hrp and hum then
+                        hrp.CFrame = hrp.CFrame + hum.MoveDirection * 0.43
+                    end
+                    task.wait()
+                end
+            end
+            
+            superAntiGrabUnfreeze(char)
+            
+            -- Разанкориваем
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = false
+                end
+            end
+            
+            superAntiGrabProc = false
+            superAntiGrabAGWalk = false
+        end
+    end)
+    
+    -- Heartbeat борьба (запасной вариант)
+    superAntiGrabConnections["HeartbeatStruggle"] = RunService.Heartbeat:Connect(function()
+        if superAntiGrabActive then
+            local char = LocalPlayer.Character
+            if char and char.Head and char.Head:FindFirstChild("PartOwner") then
+                if Struggle then
+                    pcall(function() Struggle:FireServer(LocalPlayer) end)
+                end
+            end
+        end
+    end)
+end
+
+DefenseGroup:AddToggle("AntiGrab", {
+    Text = "Анти Граб (Super)",
+    Default = false,
+    Callback = function(Value)
+        superAntiGrabActive = Value
+        
+        if Value then
+            -- Настройка на текущем персонаже
+            local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+            superAntiGrabSetup(char)
+            
+            -- Подписываемся на перерождение
+            superAntiGrabConnections["CharAdded"] = LocalPlayer.CharacterAdded:Connect(function(newChar)
+                task.wait(0.5)
+                if superAntiGrabActive then
+                    superAntiGrabSetup(newChar)
+                end
+            end)
+            
+            Library:Notify({
+                Title = "BROKEN SPAWN",
+                Description = "Super Anti Grab включён",
+                Duration = 2
+            })
+            
+        else
+            -- Очистка при выключении
+            superAntiGrabCleanup()
+            
+            Library:Notify({
+                Title = "BROKEN SPAWN",
+                Description = "Super Anti Grab выключен",
+                Duration = 2
+            })
         end
     end
 })
