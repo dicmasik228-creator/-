@@ -219,7 +219,7 @@ NoclipGroup:AddToggle("Noclip", {
 })
 
 -- ==============================================
--- РАЗДЕЛ: ЗАЩИТА (АНТИ ГРАБ, АНТИ ОГОНЬ, АНТИ ЛАГ)
+-- РАЗДЕЛ: ЗАЩИТА (АНТИ ГРАБ, АНТИ ОГОНЬ, АНТИ ВЗРЫВЫ, АНТИ ЛАГ)
 -- ==============================================
 local DefenseGroup = Tabs.Defense:AddLeftGroupbox("🛡️ ЗАЩИТА")
 
@@ -496,6 +496,87 @@ DefenseGroup:AddToggle("AntiFire", {
             if antiFireCharConn then
                 antiFireCharConn:Disconnect()
                 antiFireCharConn = nil
+            end
+        end
+    end
+})
+
+-- ==============================================
+-- АНТИ ВЗРЫВЫ (Anti Explosion)
+-- ==============================================
+local antiExplosionActive = false
+local antiExplosionConnection = nil
+local antiExplosionCharConn = nil
+
+local function startAntiExplosion()
+    if antiExplosionConnection then antiExplosionConnection:Disconnect() end
+    
+    local function onExplosion(model)
+        if not antiExplosionActive then return end
+        if model.Name ~= "Part" then return end
+        
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        
+        local mag = (model.Position - hrp.Position).Magnitude
+        if mag <= 25 then
+            hrp.Anchored = true
+            
+            for _, limb in pairs({"Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
+                local part = char:FindFirstChild(limb)
+                if part and part:FindFirstChild("RagdollLimbPart") then
+                    part.RagdollLimbPart.CanCollide = false
+                end
+            end
+            
+            task.wait(0.05)
+            
+            for _, limb in pairs({"Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
+                local part = char:FindFirstChild(limb)
+                if part and part:FindFirstChild("RagdollLimbPart") then
+                    part.RagdollLimbPart.CanCollide = true
+                end
+            end
+            
+            hrp.Anchored = false
+        end
+    end
+    
+    antiExplosionConnection = workspace.ChildAdded:Connect(onExplosion)
+    
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Взрывы включён", Duration = 2})
+end
+
+local function stopAntiExplosion()
+    if antiExplosionConnection then
+        antiExplosionConnection:Disconnect()
+        antiExplosionConnection = nil
+    end
+    Library:Notify({Title = "BROKEN SPAWN", Description = "Анти Взрывы выключен", Duration = 2})
+end
+
+DefenseGroup:AddToggle("AntiExplosion", {
+    Text = "💥 Анти Взрывы",
+    Default = false,
+    Callback = function(Value)
+        antiExplosionActive = Value
+        if Value then
+            startAntiExplosion()
+            if antiExplosionCharConn then antiExplosionCharConn:Disconnect() end
+            antiExplosionCharConn = LocalPlayer.CharacterAdded:Connect(function()
+                task.wait(0.5)
+                if antiExplosionActive then
+                    startAntiExplosion()
+                end
+            end)
+        else
+            stopAntiExplosion()
+            if antiExplosionCharConn then
+                antiExplosionCharConn:Disconnect()
+                antiExplosionCharConn = nil
             end
         end
     end
