@@ -419,7 +419,7 @@ DefenseGroup:AddToggle("AntiFire", {
             startAntiFire()
             if antiFireCharConn then antiFireCharConn:Disconnect() end
             antiFireCharConn = LocalPlayer.CharacterAdded:Connect(function(newChar)
-                task.wait(0.05)
+                task.wait(0.006)
                 if antiFireActive then
                     if antiFireConnection then antiFireConnection:Disconnect() end
                     local hum = newChar:WaitForChild("Humanoid")
