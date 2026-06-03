@@ -671,95 +671,71 @@ DefenseRightGroup:AddToggle("AntiVoid", {
 })
 
 -- ==============================================
--- АВТО АТАКА (AUTO ATTACK)
+-- АВТО АТАКА (ПРОСТАЯ ВЕРСИЯ)
 -- ==============================================
 local autoAttackActive = false
-local autoAttackConnection = nil
 local autoAttackType = "Kill"  -- Kill, Fling
 
-local function TeleportAndKillForAutoAttack(Target)
-    local PlayerTarget = Target
-    if PlayerTarget then
-        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        if Character then
-            local HRP = Character:FindFirstChild("HumanoidRootPart")
-            local BeforeTPCFrame = HRP.CFrame
-            local TargetChar = PlayerTarget.Character
-            local TargetHum = TargetChar:FindFirstChild("Humanoid")
-            local TargetHRP = TargetChar:FindFirstChild("HumanoidRootPart")
-
-            if TargetChar and TargetHum and TargetHRP and TargetHRP:FindFirstChild("FirePlayerPart") then
-                HRP.CFrame = TargetHRP.CFrame
-                local SetNetworkOwnerArgs = {[1] = TargetHRP:FindFirstChild("FirePlayerPart"), [2] = HRP.CFrame}
-                game.ReplicatedStorage:FindFirstChild("GrabEvents"):FindFirstChild("SetNetworkOwner"):FireServer(unpack(SetNetworkOwnerArgs))
-                TargetHum:ChangeState(Enum.HumanoidStateType.Dead)
-                HRP.CFrame = BeforeTPCFrame
-            end
-        end
-    end
-end
-
-local function TeleportAndFlingForAutoAttack(Target)
-    local PlayerTarget = Target
-    if PlayerTarget then
-        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        if Character then
-            local HRP = Character:FindFirstChild("HumanoidRootPart")
-            local BeforeTPCFrame = HRP.CFrame
-            local TargetChar = PlayerTarget.Character or PlayerTarget.CharacterAdded:Wait()
-            local TargetHRP = TargetChar:FindFirstChild("HumanoidRootPart")
-            
-            if TargetChar and TargetHRP then
-                HRP.CFrame = TargetHRP.CFrame
-                local SetNetworkOwnerArgs = {[1] = TargetHRP, [2] = HRP.CFrame}
-                game.ReplicatedStorage:FindFirstChild("GrabEvents"):FindFirstChild("SetNetworkOwner"):FireServer(unpack(SetNetworkOwnerArgs))
-                
-                if not TargetHRP:FindFirstChildWhichIsA("BodyVelocity") then
-                    local BV = Instance.new("BodyVelocity", TargetHRP)
-                    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                    BV.P = 1250
-                    BV.Velocity = HRP.CFrame.LookVector * 175 + Vector3.new(0, 100, 0)
-                end
-            end
-        end
-    end
-end
-
 local function startAutoAttack()
-    if autoAttackConnection then autoAttackConnection:Disconnect() end
-    
-    autoAttackConnection = workspace.DescendantAdded:Connect(function(Descendant)
-        if Descendant.Name == "GrabParts" and autoAttackActive then
-            task.wait(0.1)
-            local GrabPart = Descendant:FindFirstChild("GrabPart")
-            local WeldConstraint = GrabPart and GrabPart:FindFirstChild("WeldConstraint")
-            
-            if GrabPart and WeldConstraint then
-                local Attacker = Players:GetPlayerFromCharacter(Descendant.Parent)
-                
-                if Attacker and Attacker ~= LocalPlayer then
-                    if autoAttackType == "Kill" then
-                        TeleportAndKillForAutoAttack(Attacker)
-                    elseif autoAttackType == "Fling" then
-                        TeleportAndFlingForAutoAttack(Attacker)
-                    end
-                end
+    -- Отслеживаем когда появляются GrabParts (кто-то тебя грабит)
+    local connection = workspace.ChildAdded:Connect(function(grabParts)
+        if not autoAttackActive then return end
+        if grabParts.Name ~= "GrabParts" then return end
+        
+        task.wait(0.1)
+        
+        -- Находим кто грабит
+        local grabPart = grabParts:FindFirstChild("GrabPart")
+        if not grabPart then return end
+        
+        local weld = grabPart:FindFirstChild("WeldConstraint")
+        if not weld then return end
+        
+        local part1 = weld.Part1
+        if not part1 then return end
+        
+        local attackerChar = part1.Parent
+        if not attackerChar then return end
+        
+        local attacker = Players:GetPlayerFromCharacter(attackerChar)
+        if not attacker or attacker == LocalPlayer then return end
+        
+        -- Контратака
+        local attackerHRP = attackerChar:FindFirstChild("HumanoidRootPart")
+        local attackerHum = attackerChar:FindFirstChild("Humanoid")
+        
+        if attackerHRP and attackerHum then
+            if autoAttackType == "Kill" then
+                -- Убить
+                attackerHum.Health = 0
+                attackerHum:ChangeState(Enum.HumanoidStateType.Dead)
+            elseif autoAttackType == "Fling" then
+                -- Отбросить
+                local BV = Instance.new("BodyVelocity", attackerHRP)
+                BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                BV.Velocity = Vector3.new(math.random(-100, 100), 100, math.random(-100, 100))
+                task.delay(1, function()
+                    if BV then BV:Destroy() end
+                end)
             end
         end
     end)
+    
+    -- Сохраняем соединение для отключения
+    _G.AutoAttackConnection = connection
 end
 
 local function stopAutoAttack()
-    if autoAttackConnection then
-        autoAttackConnection:Disconnect()
-        autoAttackConnection = nil
+    if _G.AutoAttackConnection then
+        _G.AutoAttackConnection:Disconnect()
+        _G.AutoAttackConnection = nil
     end
 end
 
--- Создаём свою группу для Авто Атаки
+-- Создаём группу
 local AutoAttackGroup = Tabs.Defense:AddRightGroupbox("Авто Атака")
 
--- Выбор режима (сверху)
+-- Выбор режима
 AutoAttackGroup:AddDropdown("AutoAttackType", {
     Text = "Режим атаки",
     Values = {"Kill", "Fling"},
@@ -769,7 +745,7 @@ AutoAttackGroup:AddDropdown("AutoAttackType", {
     end
 })
 
--- Кнопка включения (снизу)
+-- Кнопка включения
 AutoAttackGroup:AddToggle("AutoAttack", {
     Text = "Авто Атака",
     Default = false,
