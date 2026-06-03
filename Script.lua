@@ -19,8 +19,14 @@ local Tabs = {
     Settings = Window:AddTab("Settings", "settings"),
 }
 
-local PlayersGroup = Tabs.Players:AddLeftGroupbox("Настройки игрока")
+-- ==============================================
+-- ВКЛАДКА PLAYERS
+-- ==============================================
 
+-- Левая группа: Настройки игрока
+local PlayersLeftGroup = Tabs.Players:AddLeftGroupbox("Настройки игрока")
+
+-- 3 Вид
 local thirdPersonActive = false
 local function enableThirdPerson()
     local player = game.Players.LocalPlayer
@@ -32,7 +38,7 @@ local function disableThirdPerson()
     local player = game.Players.LocalPlayer
     player.CameraMode = Enum.CameraMode.LockFirstPerson
 end
-PlayersGroup:AddToggle("ThirdPerson", {
+PlayersLeftGroup:AddToggle("ThirdPerson", {
     Text = "3 Вид",
     Default = false,
     Callback = function(Value)
@@ -41,11 +47,41 @@ PlayersGroup:AddToggle("ThirdPerson", {
     end
 })
 
+-- Бесконечный прыжок
+local infiniteJumpActive = false
+local infiniteJumpConnection = nil
+local function startInfiniteJump()
+    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
+    infiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
+        if infiniteJumpActive then
+            local char = game.Players.LocalPlayer.Character
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end)
+end
+local function stopInfiniteJump()
+    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
+end
+PlayersLeftGroup:AddToggle("InfiniteJump", {
+    Text = "Бесконечный прыжок",
+    Default = false,
+    Callback = function(Value)
+        infiniteJumpActive = Value
+        if Value then startInfiniteJump() else stopInfiniteJump() end
+    end
+})
+
+-- Правая группа: Настройки игрока
+local PlayersRightGroup = Tabs.Players:AddRightGroupbox("Настройки игрока")
+
+-- Сила ускорения (Slider)
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
 local speedSteppedConnection = nil
-local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
+local speedSlider = PlayersRightGroup:AddSlider("SpeedValue", {
     Text = "Сила ускорения",
     Default = 30,
     Min = 0,
@@ -53,6 +89,8 @@ local speedSlider = PlayersGroup:AddSlider("SpeedValue", {
     Rounding = 0,
     Callback = function(Value) currentSpeedValue = Value end
 })
+
+-- Ускорение (Toggle)
 local function applySpeed()
     if not speedActive then return end
     local char = game.Players.LocalPlayer.Character
@@ -92,7 +130,7 @@ local function stopSpeedBoost()
         if hum then hum.WalkSpeed = 16 end
     end
 end
-PlayersGroup:AddToggle("SpeedToggle", {
+PlayersRightGroup:AddToggle("SpeedToggle", {
     Text = "Ускорение",
     Default = false,
     Callback = function(Value)
@@ -101,9 +139,10 @@ PlayersGroup:AddToggle("SpeedToggle", {
     end
 })
 
+-- Сила прыжка (Slider)
 local jumpActive = false
 local jumpPowerValue = 50
-local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
+local jumpSlider = PlayersRightGroup:AddSlider("JumpPower", {
     Text = "Сила прыжка",
     Default = 50,
     Min = 0,
@@ -119,6 +158,8 @@ local jumpSlider = PlayersGroup:AddSlider("JumpPower", {
         end
     end
 })
+
+-- Увеличенный прыжок (Toggle)
 local function applyJumpPower()
     local char = game.Players.LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
@@ -131,7 +172,7 @@ local function resetJumpPower()
         char.Humanoid.JumpPower = 50
     end
 end
-PlayersGroup:AddToggle("JumpToggle", {
+PlayersRightGroup:AddToggle("JumpToggle", {
     Text = "Увеличенный прыжок",
     Default = false,
     Callback = function(Value)
@@ -140,31 +181,7 @@ PlayersGroup:AddToggle("JumpToggle", {
     end
 })
 
-local infiniteJumpActive = false
-local infiniteJumpConnection = nil
-local function startInfiniteJump()
-    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
-    infiniteJumpConnection = game:GetService("UserInputService").JumpRequest:Connect(function()
-        if infiniteJumpActive then
-            local char = game.Players.LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end
-    end)
-end
-local function stopInfiniteJump()
-    if infiniteJumpConnection then infiniteJumpConnection:Disconnect() end
-end
-PlayersGroup:AddToggle("InfiniteJump", {
-    Text = "Бесконечный прыжок",
-    Default = false,
-    Callback = function(Value)
-        infiniteJumpActive = Value
-        if Value then startInfiniteJump() else stopInfiniteJump() end
-    end
-})
-
+-- Ноклип
 local noclipActive = false
 local noclipConnection = nil
 local function startNoclip()
@@ -189,7 +206,7 @@ local function stopNoclip()
         end
     end
 end
-PlayersGroup:AddToggle("Noclip", {
+PlayersRightGroup:AddToggle("Noclip", {
     Text = "Ноклип",
     Default = false,
     Callback = function(Value)
@@ -198,7 +215,9 @@ PlayersGroup:AddToggle("Noclip", {
     end
 })
 
-local DefenseGroup = Tabs.Defense:AddLeftGroupbox("Защита")
+-- ==============================================
+-- ВКЛАДКА DEFENSE (Защита)
+-- ==============================================
 
 local LocalPlayer = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -206,6 +225,10 @@ local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
+-- Левая группа: Защита
+local DefenseLeftGroup = Tabs.Defense:AddLeftGroupbox("Защита")
+
+-- Анти Граб
 local autoStruggleConn = nil
 local antiGrabHeldConn, antiGrabStruggleConn, antiGrabHumConn
 local antiGrabRootCF, antiGrabRootPos, antiGrabHardFreeze = nil, nil, false
@@ -253,7 +276,7 @@ local function antiGrabFreezeInPlace(char)
     end)
 end
 
-DefenseGroup:AddToggle("AntiGrab", {
+DefenseLeftGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
     Callback = function(Value)
@@ -323,6 +346,49 @@ DefenseGroup:AddToggle("AntiGrab", {
     end
 })
 
+-- Авто Ресет
+local autoResetActive = false
+local autoResetConnection = nil
+
+DefenseLeftGroup:AddToggle("AutoReset", {
+    Text = "Авто Ресет",
+    Default = false,
+    Callback = function(Value)
+        autoResetActive = Value
+        if Value then
+            local rs = game:GetService("ReplicatedStorage")
+            local CorrectionEvents = rs:FindFirstChild("GameCorrectionEvents")
+            if CorrectionEvents then
+                local GameNotify = CorrectionEvents:FindFirstChild("GameCorrectionsNotify")
+                if GameNotify then
+                    autoResetConnection = GameNotify.OnClientEvent:Connect(function(Type)
+                        if autoResetActive and Type == "Flying" then
+                            local StruggleEvent = rs:FindFirstChild("CharacterEvents") and rs.CharacterEvents:FindFirstChild("Struggle")
+                            if StruggleEvent then StruggleEvent:FireServer(LocalPlayer) end
+                            local char = LocalPlayer.Character
+                            if char then
+                                local humanoid = char:FindFirstChildOfClass("Humanoid")
+                                if humanoid and humanoid.Health > 0 then
+                                    humanoid.Health = 0
+                                end
+                            end
+                        end
+                    end)
+                end
+            end
+        else
+            if autoResetConnection then
+                autoResetConnection:Disconnect()
+                autoResetConnection = nil
+            end
+        end
+    end
+})
+
+-- Правая группа: Защита
+local DefenseRightGroup = Tabs.Defense:AddRightGroupbox("Защита")
+
+-- Анти Огонь
 local antiFireActive = false
 local antiFireConnection = nil
 local antiFireCharConn = nil
@@ -393,7 +459,7 @@ local function stopAntiFire()
     end
 end
 
-DefenseGroup:AddToggle("AntiFire", {
+DefenseRightGroup:AddToggle("AntiFire", {
     Text = "Анти Огонь",
     Default = false,
     Callback = function(Value)
@@ -469,6 +535,7 @@ DefenseGroup:AddToggle("AntiFire", {
     end
 })
 
+-- Анти Взрывы
 local antiExplosionActive = false
 local antiExplosionConnection = nil
 local antiExplosionCharConn = nil
@@ -520,7 +587,7 @@ local function stopAntiExplosion()
     end
 end
 
-DefenseGroup:AddToggle("AntiExplosion", {
+DefenseRightGroup:AddToggle("AntiExplosion", {
     Text = "Анти Взрывы",
     Default = false,
     Callback = function(Value)
@@ -544,6 +611,7 @@ DefenseGroup:AddToggle("AntiExplosion", {
     end
 })
 
+-- Удаление убийственной зоны
 local antiVoidActive = false
 local antiVoidConnection = nil
 
@@ -589,9 +657,8 @@ local function stopAntiVoid()
     game.Workspace.FallenPartsDestroyHeight = -50
 end
 
-local AntiVoidGroup = Tabs.Defense:AddRightGroupbox("Анти Войд")
-AntiVoidGroup:AddToggle("AntiVoid", {
-    Text = "Режим воды",
+DefenseRightGroup:AddToggle("AntiVoid", {
+    Text = "Удаление убийственной зоны",
     Default = false,
     Callback = function(Value)
         antiVoidActive = Value
@@ -603,70 +670,122 @@ AntiVoidGroup:AddToggle("AntiVoid", {
     end
 })
 
-local antiLagActive = false
-local antiLagConnection = nil
+-- ==============================================
+-- АВТО АТАКА (AUTO ATTACK)
+-- ==============================================
+local autoAttackActive = false
+local autoAttackConnection = nil
+local autoAttackType = "Kill"  -- Kill, Fling
 
-local function setupAntiLag()
-    local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-    if playerScripts then
-        local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
-        if beamScript then
-            beamScript.Disabled = true
+local function TeleportAndKillForAutoAttack(Target)
+    local PlayerTarget = Target
+    if PlayerTarget then
+        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        if Character then
+            local HRP = Character:FindFirstChild("HumanoidRootPart")
+            local BeforeTPCFrame = HRP.CFrame
+            local TargetChar = PlayerTarget.Character
+            local TargetHum = TargetChar:FindFirstChild("Humanoid")
+            local TargetHRP = TargetChar:FindFirstChild("HumanoidRootPart")
+
+            if TargetChar and TargetHum and TargetHRP and TargetHRP:FindFirstChild("FirePlayerPart") then
+                HRP.CFrame = TargetHRP.CFrame
+                local SetNetworkOwnerArgs = {[1] = TargetHRP:FindFirstChild("FirePlayerPart"), [2] = HRP.CFrame}
+                game.ReplicatedStorage:FindFirstChild("GrabEvents"):FindFirstChild("SetNetworkOwner"):FireServer(unpack(SetNetworkOwnerArgs))
+                TargetHum:ChangeState(Enum.HumanoidStateType.Dead)
+                HRP.CFrame = BeforeTPCFrame
+            end
         end
     end
+end
+
+local function TeleportAndFlingForAutoAttack(Target)
+    local PlayerTarget = Target
+    if PlayerTarget then
+        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+        if Character then
+            local HRP = Character:FindFirstChild("HumanoidRootPart")
+            local BeforeTPCFrame = HRP.CFrame
+            local TargetChar = PlayerTarget.Character or PlayerTarget.CharacterAdded:Wait()
+            local TargetHRP = TargetChar:FindFirstChild("HumanoidRootPart")
+            
+            if TargetChar and TargetHRP then
+                HRP.CFrame = TargetHRP.CFrame
+                local SetNetworkOwnerArgs = {[1] = TargetHRP, [2] = HRP.CFrame}
+                game.ReplicatedStorage:FindFirstChild("GrabEvents"):FindFirstChild("SetNetworkOwner"):FireServer(unpack(SetNetworkOwnerArgs))
+                
+                if not TargetHRP:FindFirstChildWhichIsA("BodyVelocity") then
+                    local BV = Instance.new("BodyVelocity", TargetHRP)
+                    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+                    BV.P = 1250
+                    BV.Velocity = HRP.CFrame.LookVector * 175 + Vector3.new(0, 100, 0)
+                end
+            end
+        end
+    end
+end
+
+local function startAutoAttack()
+    if autoAttackConnection then autoAttackConnection:Disconnect() end
     
-    for _, v in ipairs(workspace:GetDescendants()) do
-        if v:IsA("Beam") then
-            v:Destroy()
+    autoAttackConnection = workspace.DescendantAdded:Connect(function(Descendant)
+        if Descendant.Name == "GrabParts" and autoAttackActive then
+            task.wait(0.1)
+            local GrabPart = Descendant:FindFirstChild("GrabPart")
+            local WeldConstraint = GrabPart and GrabPart:FindFirstChild("WeldConstraint")
+            
+            if GrabPart and WeldConstraint then
+                local Attacker = Players:GetPlayerFromCharacter(Descendant.Parent)
+                
+                if Attacker and Attacker ~= LocalPlayer then
+                    if autoAttackType == "Kill" then
+                        TeleportAndKillForAutoAttack(Attacker)
+                    elseif autoAttackType == "Fling" then
+                        TeleportAndFlingForAutoAttack(Attacker)
+                    end
+                end
+            end
         end
-        if v.Name and v.Name:lower():find("line") then
-            v:Destroy()
-        end
-    end
-    local grabFolder = ReplicatedStorage:FindFirstChild("GrabEvents")
-    if grabFolder then
-        local create = grabFolder:FindFirstChild("CreateGrabLine")
-        local extend = grabFolder:FindFirstChild("ExtendGrabLine")
-        if create then create:Destroy() end
-        if extend then extend:Destroy() end
+    end)
+end
+
+local function stopAutoAttack()
+    if autoAttackConnection then
+        autoAttackConnection:Disconnect()
+        autoAttackConnection = nil
     end
 end
 
-local function startAntiLag()
-    if antiLagConnection then antiLagConnection:Disconnect() end
-    setupAntiLag()
-end
-
-local function stopAntiLag()
-    if antiLagConnection then
-        antiLagConnection:Disconnect()
-        antiLagConnection = nil
+-- Выбор режима (сверху)
+DefenseRightGroup:AddDropdown("AutoAttackType", {
+    Text = "Режим атаки",
+    Values = {"Kill", "Fling"},
+    Default = "Kill",
+    Callback = function(Value)
+        autoAttackType = Value
     end
-    local playerScripts = LocalPlayer:FindFirstChild("PlayerScripts")
-    if playerScripts then
-        local beamScript = playerScripts:FindFirstChild("CharacterAndBeamMove")
-        if beamScript then
-            beamScript.Disabled = false
-        end
-    end
-end
+})
 
-local AntiLagGroup = Tabs.Defense:AddRightGroupbox("Анти Лаг")
-AntiLagGroup:AddToggle("AntiLag", {
-    Text = "Анти Лаг",
+-- Кнопка включения (снизу)
+DefenseRightGroup:AddToggle("AutoAttack", {
+    Text = "Авто Атака",
     Default = false,
     Callback = function(Value)
-        antiLagActive = Value
+        autoAttackActive = Value
         if Value then
-            startAntiLag()
+            startAutoAttack()
         else
-            stopAntiLag()
+            stopAutoAttack()
         end
     end
 })
 
+-- ==============================================
+-- ВКЛАДКА SMILE (Приколы)
+-- ==============================================
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
+-- Мощность лага (старый) (1-200)
 local lagActive = false
 local lagPower = 100
 local lagConnection = nil
@@ -674,9 +793,8 @@ local lagConnection = nil
 local lagSlider = SmileGroup:AddSlider("LagPower", {
     Text = "Мощность лага",
     Default = 100,
-    Min = 10,
-    Max = 300,
-    Step = 10,
+    Min = 1,
+    Max = 200,
     Rounding = 0,
     Callback = function(Value)
         lagPower = Value
@@ -717,6 +835,7 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
+-- Мощность лага (Line) (1-200)
 local serverLagActive = false
 local serverLagTask = nil
 local serverLagIntensity = 150
@@ -724,8 +843,8 @@ local serverLagIntensity = 150
 local lagIntensitySlider = SmileGroup:AddSlider("LagIntensity", {
     Text = "Мощность лага (Line)",
     Default = 150,
-    Min = 10,
-    Max = 1000,
+    Min = 1,
+    Max = 200,
     Rounding = 0,
     Callback = function(Value)
         serverLagIntensity = Value
@@ -783,17 +902,16 @@ SmileGroup:AddToggle("ServerLagToggle", {
             serverLagTask = task.spawn(function()
                 ServerLagFunction(serverLagIntensity)
             end)
-            Library:Notify({Title = "Лаг сервера", Description = "Включён (мощность: " .. serverLagIntensity .. ")", Duration = 2})
         else
             if serverLagTask then
                 task.cancel(serverLagTask)
                 serverLagTask = nil
             end
-            Library:Notify({Title = "Лаг сервера", Description = "Выключен", Duration = 2})
         end
     end
 })
 
+-- Хождение по воде
 local waterWalkActive = false
 local waterWalkParts = {}
 
@@ -841,8 +959,7 @@ local function stopWaterWalk()
     restoreWaterWalk()
 end
 
-local WaterWalkGroup = Tabs.Smile:AddLeftGroupbox("Вода")
-WaterWalkGroup:AddToggle("WaterWalk", {
+SmileGroup:AddToggle("WaterWalk", {
     Text = "Хождение по воде",
     Default = false,
     Callback = function(Value)
@@ -855,6 +972,9 @@ WaterWalkGroup:AddToggle("WaterWalk", {
     end
 })
 
+-- ==============================================
+-- ОПТИМИЗАЦИЯ
+-- ==============================================
 task.spawn(function()
     print("Оптимизация запущена")
     local lighting = game:GetService("Lighting")
@@ -888,6 +1008,9 @@ task.spawn(function()
     end
 end)
 
+-- ==============================================
+-- PACKET LAG NOTIFY
+-- ==============================================
 local lastPacketNotifyTime = 0
 local packetLagSuspects = {}
 local packetMonitorConnection = nil
@@ -990,6 +1113,9 @@ task.spawn(function()
     startPacketLagMonitor()
 end)
 
+-- ==============================================
+-- ИНДИКАТОР FPS, PING, МОНЕТЫ (HUD)
+-- ==============================================
 local function CreateHUD()
     if _G.HUD then
         pcall(function() _G.HUD:Destroy() end)
@@ -1105,6 +1231,9 @@ task.spawn(function()
     CreateHUD()
 end)
 
+-- ==============================================
+-- НАСТРОЙКИ UI
+-- ==============================================
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 UIGroup:AddButton("Unload", function() Library:Unload() end)
 
@@ -1127,169 +1256,3 @@ if grabEvents then
 end
 
 print("Меню загружено")
-
-local antiAttackerActive = false
-local antiAttackerConnection = nil
-local antiAttackerType = "Kill"
-local antiAttackerKickType = "Float"
-
-local function TeleportAndKillForAntiAttacker(Target)
-    local PlayerTarget = Target
-    if PlayerTarget then
-        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        if Character then
-            local HRP = Character:FindFirstChild("HumanoidRootPart")
-            local BeforeTPCFrame = HRP.CFrame
-            local TargetChar = PlayerTarget.Character
-            local TargetHum = TargetChar:FindFirstChild("Humanoid")
-            local TargetHRP = TargetChar:FindFirstChild("HumanoidRootPart")
-
-            if TargetChar and TargetHum and TargetHRP and TargetHRP:FindFirstChild("FirePlayerPart") then
-                HRP.CFrame = TargetHRP.CFrame
-                local SetNetworkOwnerArgs = {[1] = TargetHRP:FindFirstChild("FirePlayerPart"), [2] = HRP.CFrame}
-                game.ReplicatedStorage:FindFirstChild("GrabEvents"):FindFirstChild("SetNetworkOwner"):FireServer(unpack(SetNetworkOwnerArgs))
-                TargetHum:ChangeState(Enum.HumanoidStateType.Dead)
-                HRP.CFrame = BeforeTPCFrame
-            end
-            task.defer(function()
-                task.wait(0.2)
-                HRP.CFrame = BeforeTPCFrame
-            end)
-        end
-    end
-end
-
-local function TeleportAndKickForAntiAttacker(Target)
-    local PlayerTarget = Target
-    if PlayerTarget then
-        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        if Character then
-            local HRP = Character:FindFirstChild("HumanoidRootPart")
-            local BeforeTPCFrame = HRP.CFrame
-            local TargetChar = PlayerTarget.Character or PlayerTarget.CharacterAdded:Wait()
-            local TargetHum = TargetChar:FindFirstChild("Humanoid")
-            local TargetHRP = TargetChar:FindFirstChild("HumanoidRootPart")
-            
-            if TargetChar and TargetHum and TargetHRP and TargetHRP:FindFirstChild("FirePlayerPart") then
-                local TargetFPP = TargetHRP.FirePlayerPart
-                HRP.CFrame = TargetHRP.CFrame
-                local SetNetworkOwnerArgs = {[1] = TargetFPP, [2] = HRP.CFrame}
-                game.ReplicatedStorage:FindFirstChild("GrabEvents"):FindFirstChild("SetNetworkOwner"):FireServer(unpack(SetNetworkOwnerArgs))
-                
-                if antiAttackerKickType == "Float" then
-                    local FlyVelocity = Instance.new("BodyVelocity", TargetFPP)
-                    FlyVelocity.MaxForce = Vector3.new(1000000, 1000000, 1000000)
-                    FlyVelocity.P = 1250
-                    FlyVelocity.Velocity = Vector3.new(math.random(-25, 25), 75, math.random(-25, 25))
-                elseif antiAttackerKickType == "Silent" then
-                    TargetHum.HipHeight = 2.6
-                end
-            end
-            task.defer(function()
-                task.wait(0.2)
-                HRP.CFrame = BeforeTPCFrame
-            end)
-        end
-    end
-end
-
-local function TeleportAndFlingForAntiAttacker(Target)
-    local PlayerTarget = Target
-    if PlayerTarget then
-        local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        if Character then
-            local HRP = Character:FindFirstChild("HumanoidRootPart")
-            local BeforeTPCFrame = HRP.CFrame
-            local TargetChar = PlayerTarget.Character or PlayerTarget.CharacterAdded:Wait()
-            local TargetHRP = TargetChar:FindFirstChild("HumanoidRootPart")
-            
-            if TargetChar and TargetHRP then
-                HRP.CFrame = TargetHRP.CFrame
-                local SetNetworkOwnerArgs = {[1] = TargetHRP, [2] = HRP.CFrame}
-                game.ReplicatedStorage:FindFirstChild("GrabEvents"):FindFirstChild("SetNetworkOwner"):FireServer(unpack(SetNetworkOwnerArgs))
-                
-                if not TargetHRP:FindFirstChildWhichIsA("BodyVelocity") then
-                    local BV = Instance.new("BodyVelocity", TargetHRP)
-                    BV.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-                    BV.P = 1250
-                    BV.Velocity = HRP.CFrame.LookVector * 175 + Vector3.new(0, 100, 0)
-                end
-            end
-            task.defer(function()
-                task.wait(0.2)
-                HRP.CFrame = BeforeTPCFrame
-            end)
-        end
-    end
-end
-
-local function startAntiAttacker()
-    if antiAttackerConnection then antiAttackerConnection:Disconnect() end
-    
-    antiAttackerConnection = workspace.DescendantAdded:Connect(function(Descendant)
-        if Descendant.Name == "GrabParts" and antiAttackerActive then
-            task.wait(0.1)
-            local GrabPart = Descendant:FindFirstChild("GrabPart")
-            local WeldConstraint = GrabPart and GrabPart:FindFirstChild("WeldConstraint")
-            
-            if GrabPart and WeldConstraint then
-                local Attacker = Players:GetPlayerFromCharacter(Descendant.Parent)
-                
-                if Attacker and Attacker ~= LocalPlayer then
-                    if antiAttackerType == "Kill" then
-                        TeleportAndKillForAntiAttacker(Attacker)
-                    elseif antiAttackerType == "Kick" then
-                        TeleportAndKickForAntiAttacker(Attacker)
-                    elseif antiAttackerType == "Fling" then
-                        TeleportAndFlingForAntiAttacker(Attacker)
-                    end
-                end
-            end
-        end
-    end)
-    
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Anti-Attacker включён (" .. antiAttackerType .. ")", Duration = 2})
-end
-
-local function stopAntiAttacker()
-    if antiAttackerConnection then
-        antiAttackerConnection:Disconnect()
-        antiAttackerConnection = nil
-    end
-    Library:Notify({Title = "BROKEN SPAWN", Description = "Anti-Attacker выключен", Duration = 2})
-end
-
-local AntiAttackerGroup = Tabs.Defense:AddRightGroupbox("Anti-Attacker")
-AntiAttackerGroup:AddToggle("AntiAttacker", {
-    Text = "Anti-Attacker",
-    Default = false,
-    Callback = function(Value)
-        antiAttackerActive = Value
-        if Value then
-            startAntiAttacker()
-        else
-            stopAntiAttacker()
-        end
-    end
-})
-
-AntiAttackerGroup:AddDropdown("AntiAttackerType", {
-    Text = "Режим атаки",
-    Values = {"Kill", "Kick", "Fling"},
-    Default = "Kill",
-    Callback = function(Value)
-        antiAttackerType = Value
-        if antiAttackerActive then
-            Library:Notify({Title = "BROKEN SPAWN", Description = "Режим изменён на " .. Value, Duration = 2})
-        end
-    end
-})
-
-AntiAttackerGroup:AddDropdown("AntiAttackerKickType", {
-    Text = "Тип кика",
-    Values = {"Float", "Silent"},
-    Default = "Float",
-    Callback = function(Value)
-        antiAttackerKickType = Value
-    end
-})
