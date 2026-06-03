@@ -756,8 +756,11 @@ local function stopAutoAttack()
     end
 end
 
+-- Создаём свою группу для Авто Атаки
+local AutoAttackGroup = Tabs.Defense:AddRightGroupbox("Авто Атака")
+
 -- Выбор режима (сверху)
-DefenseRightGroup:AddDropdown("AutoAttackType", {
+AutoAttackGroup:AddDropdown("AutoAttackType", {
     Text = "Режим атаки",
     Values = {"Kill", "Fling"},
     Default = "Kill",
@@ -767,7 +770,7 @@ DefenseRightGroup:AddDropdown("AutoAttackType", {
 })
 
 -- Кнопка включения (снизу)
-DefenseRightGroup:AddToggle("AutoAttack", {
+AutoAttackGroup:AddToggle("AutoAttack", {
     Text = "Авто Атака",
     Default = false,
     Callback = function(Value)
