@@ -346,6 +346,48 @@ DefenseLeftGroup:AddToggle("AntiGrab", {
     end
 })
 
+-- ==============================================
+-- НОВАЯ КНОПКА: Анти Кик Хитбокс
+-- ==============================================
+local antiKickHitboxActive = false
+local antiKickHitboxConn = nil
+
+local function startAntiKickHitbox()
+    if antiKickHitboxConn then antiKickHitboxConn:Disconnect() end
+    antiKickHitboxConn = RunService.Heartbeat:Connect(function()
+        if not antiKickHitboxActive then return end
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            local fpp = hrp:FindFirstChild("FirePlayerPart")
+            if fpp and fpp:FindFirstChild("PartOwner") then
+                if Struggle then 
+                    pcall(function() Struggle:FireServer(LocalPlayer) end)
+                end
+                hrp.Anchored = true
+                task.wait(0.05)
+                hrp.Anchored = false
+            end
+        end
+    end)
+end
+
+DefenseLeftGroup:AddToggle("AntiKickHitbox", {
+    Text = "Анти Кик Хитбокс",
+    Default = false,
+    Callback = function(Value)
+        antiKickHitboxActive = Value
+        if Value then
+            startAntiKickHitbox()
+        else
+            if antiKickHitboxConn then
+                antiKickHitboxConn:Disconnect()
+                antiKickHitboxConn = nil
+            end
+        end
+    end
+})
+
 -- Авто Ресет
 local autoResetActive = false
 local autoResetConnection = nil
@@ -670,10 +712,7 @@ DefenseRightGroup:AddToggle("AntiVoid", {
     end
 })
 
--- ==============================================
--- АНТИ БЛОБМЕН (Anti Blobman) - НОВАЯ ФУНКЦИЯ
--- ==============================================
-
+-- Анти Блобмен
 local antiBlobmanActive = false
 local antiBlobmanLoop = nil
 
@@ -738,18 +777,8 @@ DefenseRightGroup:AddToggle("AntiBlobman", {
         antiBlobmanActive = Value
         if Value then
             startAntiBlobman()
-            Library:Notify({
-                Title = "Anti Blobman",
-                Description = "Защита от блобменов включена",
-                Duration = 3
-            })
         else
             stopAntiBlobman()
-            Library:Notify({
-                Title = "Anti Blobman",
-                Description = "Защита от блобменов выключена",
-                Duration = 3
-            })
         end
     end
 })
@@ -1088,7 +1117,7 @@ task.spawn(function()
 end)
 
 -- ==============================================
--- ИНДИКАТОР FPS, PING, МОНЕТЫ (HUD)
+-- ИНДИКАТОР FPS, PING (БЕЗ МОНЕТ)
 -- ==============================================
 local function CreateHUD()
     if _G.HUD then
@@ -1106,7 +1135,7 @@ local function CreateHUD()
     local mainFrame = Instance.new("Frame")
     mainFrame.BackgroundTransparency = 1
     mainFrame.Position = UDim2.new(1, -140, 0, 10)
-    mainFrame.Size = UDim2.new(0, 130, 0, 65)
+    mainFrame.Size = UDim2.new(0, 130, 0, 45)
     mainFrame.Parent = screenGui
     
     local fpsLabel = Instance.new("TextLabel")
@@ -1133,18 +1162,6 @@ local function CreateHUD()
     pingLabel.TextXAlignment = Enum.TextXAlignment.Right
     pingLabel.Parent = mainFrame
     
-    local coinsLabel = Instance.new("TextLabel")
-    coinsLabel.BackgroundTransparency = 1
-    coinsLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-    coinsLabel.TextStrokeTransparency = 0.5
-    coinsLabel.Font = Enum.Font.SourceSansBold
-    coinsLabel.TextSize = 16
-    coinsLabel.Text = "Монет: 0"
-    coinsLabel.Position = UDim2.new(0, 0, 0, 44)
-    coinsLabel.Size = UDim2.new(1, 0, 0, 20)
-    coinsLabel.TextXAlignment = Enum.TextXAlignment.Right
-    coinsLabel.Parent = mainFrame
-    
     local lastTime = tick()
     local frameCount = 0
     local fps = 0
@@ -1165,37 +1182,6 @@ local function CreateHUD()
             local ping = game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValueString()
             pingLabel.Text = "Ping: " .. ping .. " ms"
             task.wait(1)
-        end
-    end)
-    
-    local function findCoins()
-        local player = game.Players.LocalPlayer
-        if not player then return 0 end
-        
-        local leaderstats = player:FindFirstChild("leaderstats")
-        if leaderstats then
-            local coinStat = leaderstats:FindFirstChild("coin") or leaderstats:FindFirstChild("Coin") or leaderstats:FindFirstChild("coins") or leaderstats:FindFirstChild("Coins")
-            if coinStat then
-                return tonumber(coinStat.Value) or 0
-            end
-        end
-        
-        local stats = player:FindFirstChild("Stats") or player:FindFirstChild("Data")
-        if stats then
-            local coinStat = stats:FindFirstChild("coin") or stats:FindFirstChild("Coin") or stats:FindFirstChild("coins") or stats:FindFirstChild("Coins")
-            if coinStat then
-                return tonumber(coinStat.Value) or 0
-            end
-        end
-        
-        return 0
-    end
-    
-    task.spawn(function()
-        while screenGui and screenGui.Parent do
-            local coins = findCoins()
-            coinsLabel.Text = "Монет: " .. coins
-            task.wait(0.5)
         end
     end)
 end
