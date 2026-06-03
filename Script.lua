@@ -784,6 +784,53 @@ DefenseRightGroup:AddToggle("AntiBlobman", {
 })
 
 -- ==============================================
+-- АНТИ БЛОБМЕН КИК (Anti Blobman Kick)
+-- ==============================================
+local antiBlobmanKickActive = false
+local antiBlobmanKickConn = nil
+
+local function startAntiBlobmanKick()
+    if antiBlobmanKickConn then antiBlobmanKickConn:Disconnect() end
+    antiBlobmanKickConn = RunService.Heartbeat:Connect(function()
+        if not antiBlobmanKickActive then return end
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum and hum.SeatPart and hum.SeatPart.Parent and hum.SeatPart.Parent.Name == "CreatureBlobman" then
+                local blob = hum.SeatPart.Parent
+                local leftDetector = blob:FindFirstChild("LeftDetector")
+                local rightDetector = blob:FindFirstChild("RightDetector")
+                local script = blob:FindFirstChild("BlobmanSeatAndOwnerScript")
+                if script then
+                    if leftDetector and leftDetector:FindFirstChild("LeftWeld") then
+                        pcall(script.CreatureDrop.FireServer, script.CreatureDrop, leftDetector.LeftWeld)
+                    end
+                    if rightDetector and rightDetector:FindFirstChild("RightWeld") then
+                        pcall(script.CreatureDrop.FireServer, script.CreatureDrop, rightDetector.RightWeld)
+                    end
+                end
+            end
+        end
+    end)
+end
+
+DefenseRightGroup:AddToggle("AntiBlobmanKick", {
+    Text = "Анти Блобмен Кик",
+    Default = false,
+    Callback = function(Value)
+        antiBlobmanKickActive = Value
+        if Value then
+            startAntiBlobmanKick()
+        else
+            if antiBlobmanKickConn then
+                antiBlobmanKickConn:Disconnect()
+                antiBlobmanKickConn = nil
+            end
+        end
+    end
+})
+
+-- ==============================================
 -- ВКЛАДКА SMILE (Приколы)
 -- ==============================================
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
