@@ -19,14 +19,8 @@ local Tabs = {
     Settings = Window:AddTab("Settings", "settings"),
 }
 
--- ==============================================
--- ВКЛАДКА PLAYERS
--- ==============================================
-
--- Левая группа: Настройки игрока
 local PlayersLeftGroup = Tabs.Players:AddLeftGroupbox("Настройки игрока")
 
--- 3 Вид
 local thirdPersonActive = false
 local function enableThirdPerson()
     local player = game.Players.LocalPlayer
@@ -47,7 +41,6 @@ PlayersLeftGroup:AddToggle("ThirdPerson", {
     end
 })
 
--- Бесконечный прыжок
 local infiniteJumpActive = false
 local infiniteJumpConnection = nil
 local function startInfiniteJump()
@@ -73,10 +66,8 @@ PlayersLeftGroup:AddToggle("InfiniteJump", {
     end
 })
 
--- Правая группа: Настройки игрока
 local PlayersRightGroup = Tabs.Players:AddRightGroupbox("Настройки игрока")
 
--- Сила ускорения (Slider)
 local speedActive = false
 local currentSpeedValue = 30
 local speedConnection = nil
@@ -90,7 +81,6 @@ local speedSlider = PlayersRightGroup:AddSlider("SpeedValue", {
     Callback = function(Value) currentSpeedValue = Value end
 })
 
--- Ускорение (Toggle)
 local function applySpeed()
     if not speedActive then return end
     local char = game.Players.LocalPlayer.Character
@@ -139,7 +129,6 @@ PlayersRightGroup:AddToggle("SpeedToggle", {
     end
 })
 
--- Сила прыжка (Slider)
 local jumpActive = false
 local jumpPowerValue = 50
 local jumpSlider = PlayersRightGroup:AddSlider("JumpPower", {
@@ -159,7 +148,6 @@ local jumpSlider = PlayersRightGroup:AddSlider("JumpPower", {
     end
 })
 
--- Увеличенный прыжок (Toggle)
 local function applyJumpPower()
     local char = game.Players.LocalPlayer.Character
     if char and char:FindFirstChild("Humanoid") then
@@ -181,7 +169,6 @@ PlayersRightGroup:AddToggle("JumpToggle", {
     end
 })
 
--- Ноклип
 local noclipActive = false
 local noclipConnection = nil
 local function startNoclip()
@@ -215,20 +202,14 @@ PlayersRightGroup:AddToggle("Noclip", {
     end
 })
 
--- ==============================================
--- ВКЛАДКА DEFENSE (Защита)
--- ==============================================
-
 local LocalPlayer = game.Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
 local isHeld = LocalPlayer:FindFirstChild("IsHeld")
 
--- Левая группа: Защита
 local DefenseLeftGroup = Tabs.Defense:AddLeftGroupbox("Защита")
 
--- Анти Граб
 local autoStruggleConn = nil
 local antiGrabHeldConn, antiGrabStruggleConn, antiGrabHumConn
 local antiGrabRootCF, antiGrabRootPos, antiGrabHardFreeze = nil, nil, false
@@ -346,9 +327,6 @@ DefenseLeftGroup:AddToggle("AntiGrab", {
     end
 })
 
--- ==============================================
--- НОВАЯ КНОПКА: Анти Кик Хитбокс
--- ==============================================
 local antiKickHitboxActive = false
 local antiKickHitboxConn = nil
 
@@ -388,7 +366,6 @@ DefenseLeftGroup:AddToggle("AntiKickHitbox", {
     end
 })
 
--- Авто Ресет
 local autoResetActive = false
 local autoResetConnection = nil
 
@@ -427,10 +404,8 @@ DefenseLeftGroup:AddToggle("AutoReset", {
     end
 })
 
--- Правая группа: Защита
 local DefenseRightGroup = Tabs.Defense:AddRightGroupbox("Защита")
 
--- Анти Огонь
 local antiFireActive = false
 local antiFireConnection = nil
 local antiFireCharConn = nil
@@ -577,7 +552,6 @@ DefenseRightGroup:AddToggle("AntiFire", {
     end
 })
 
--- Анти Взрывы
 local antiExplosionActive = false
 local antiExplosionConnection = nil
 local antiExplosionCharConn = nil
@@ -653,7 +627,6 @@ DefenseRightGroup:AddToggle("AntiExplosion", {
     end
 })
 
--- Удаление убийственной зоны
 local antiVoidActive = false
 local antiVoidConnection = nil
 
@@ -712,7 +685,6 @@ DefenseRightGroup:AddToggle("AntiVoid", {
     end
 })
 
--- Анти Блобмен
 local antiBlobmanActive = false
 local antiBlobmanLoop = nil
 
@@ -783,59 +755,8 @@ DefenseRightGroup:AddToggle("AntiBlobman", {
     end
 })
 
--- ==============================================
--- АНТИ БЛОБМЕН КИК (Anti Blobman Kick)
--- ==============================================
-local antiBlobmanKickActive = false
-local antiBlobmanKickConn = nil
-
-local function startAntiBlobmanKick()
-    if antiBlobmanKickConn then antiBlobmanKickConn:Disconnect() end
-    antiBlobmanKickConn = RunService.Heartbeat:Connect(function()
-        if not antiBlobmanKickActive then return end
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChild("Humanoid")
-            if hum and hum.SeatPart and hum.SeatPart.Parent and hum.SeatPart.Parent.Name == "CreatureBlobman" then
-                local blob = hum.SeatPart.Parent
-                local leftDetector = blob:FindFirstChild("LeftDetector")
-                local rightDetector = blob:FindFirstChild("RightDetector")
-                local script = blob:FindFirstChild("BlobmanSeatAndOwnerScript")
-                if script then
-                    if leftDetector and leftDetector:FindFirstChild("LeftWeld") then
-                        pcall(script.CreatureDrop.FireServer, script.CreatureDrop, leftDetector.LeftWeld)
-                    end
-                    if rightDetector and rightDetector:FindFirstChild("RightWeld") then
-                        pcall(script.CreatureDrop.FireServer, script.CreatureDrop, rightDetector.RightWeld)
-                    end
-                end
-            end
-        end
-    end)
-end
-
-DefenseRightGroup:AddToggle("AntiBlobmanKick", {
-    Text = "Анти Блобмен Кик",
-    Default = false,
-    Callback = function(Value)
-        antiBlobmanKickActive = Value
-        if Value then
-            startAntiBlobmanKick()
-        else
-            if antiBlobmanKickConn then
-                antiBlobmanKickConn:Disconnect()
-                antiBlobmanKickConn = nil
-            end
-        end
-    end
-})
-
--- ==============================================
--- ВКЛАДКА SMILE (Приколы)
--- ==============================================
 local SmileGroup = Tabs.Smile:AddLeftGroupbox("Приколы")
 
--- Мощность лага (старый) (1-200)
 local lagActive = false
 local lagPower = 100
 local lagConnection = nil
@@ -885,7 +806,6 @@ SmileGroup:AddToggle("LagToggle", {
     end
 })
 
--- Мощность лага (Line) (1-200)
 local serverLagActive = false
 local serverLagTask = nil
 local serverLagIntensity = 150
@@ -961,7 +881,6 @@ SmileGroup:AddToggle("ServerLagToggle", {
     end
 })
 
--- Хождение по воде
 local waterWalkActive = false
 local waterWalkParts = {}
 
@@ -1022,9 +941,6 @@ SmileGroup:AddToggle("WaterWalk", {
     end
 })
 
--- ==============================================
--- ОПТИМИЗАЦИЯ
--- ==============================================
 task.spawn(function()
     print("Оптимизация запущена")
     local lighting = game:GetService("Lighting")
@@ -1058,9 +974,6 @@ task.spawn(function()
     end
 end)
 
--- ==============================================
--- PACKET LAG NOTIFY
--- ==============================================
 local lastPacketNotifyTime = 0
 local packetLagSuspects = {}
 local packetMonitorConnection = nil
@@ -1163,9 +1076,6 @@ task.spawn(function()
     startPacketLagMonitor()
 end)
 
--- ==============================================
--- ИНДИКАТОР FPS, PING (БЕЗ МОНЕТ)
--- ==============================================
 local function CreateHUD()
     if _G.HUD then
         pcall(function() _G.HUD:Destroy() end)
@@ -1238,9 +1148,6 @@ task.spawn(function()
     CreateHUD()
 end)
 
--- ==============================================
--- НАСТРОЙКИ UI
--- ==============================================
 local UIGroup = Tabs.Settings:AddLeftGroupbox("UI Settings")
 UIGroup:AddButton("Unload", function() Library:Unload() end)
 
