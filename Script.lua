@@ -393,13 +393,52 @@ local function stopAntiGrab()
     end
 end
 
--- Кнопка Анти Граб (название не меняется)
+-- Кнопка Анти Граб
 DefenseLeftGroup:AddToggle("AntiGrab", {
     Text = "Анти Граб",
     Default = false,
     Callback = function(Value)
         antiGrabActive = Value
         if Value then startAntiGrab() else stopAntiGrab() end
+    end
+})
+
+-- ============================================
+-- Дрочка Еды (Anti Network Owner)
+-- ============================================
+
+local antiNetworkOwnerActive = false
+local antiNetworkOwnerConn = nil
+
+local function startAntiNetworkOwner()
+    if antiNetworkOwnerConn then antiNetworkOwnerConn:Disconnect() end
+    antiNetworkOwnerConn = RunService.Heartbeat:Connect(function()
+        if not antiNetworkOwnerActive then return end
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local hrp = char.HumanoidRootPart
+            local setNetworkOwner = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("SetNetworkOwner")
+            if setNetworkOwner then
+                pcall(function() setNetworkOwner:FireServer(hrp, hrp.CFrame) end)
+            end
+        end
+    end)
+end
+
+local function stopAntiNetworkOwner()
+    if antiNetworkOwnerConn then
+        antiNetworkOwnerConn:Disconnect()
+        antiNetworkOwnerConn = nil
+    end
+end
+
+DefenseLeftGroup:AddToggle("AntiNetworkOwner", {
+    Text = "Дрочка Еды",
+    Default = false,
+    Flag = "AntiNetworkOwner",
+    Callback = function(Value)
+        antiNetworkOwnerActive = Value
+        if Value then startAntiNetworkOwner() else stopAntiNetworkOwner() end
     end
 })
 
