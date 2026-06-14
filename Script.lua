@@ -1169,4 +1169,219 @@ if grabEvents then
     end
 end
 
+-- ============================================
+-- Добавлено: Анти Граб (Объединённая версия, без кика)
+-- ============================================
+
+local LocalPlayer = game.Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Struggle = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("Struggle")
+local RagdollRemote = ReplicatedStorage:FindFirstChild("CharacterEvents") and ReplicatedStorage.CharacterEvents:FindFirstChild("RagdollRemote")
+local SetNetworkOwner = ReplicatedStorage:FindFirstChild("GrabEvents") and ReplicatedStorage.GrabEvents:FindFirstChild("SetNetworkOwner")
+local isHeld = LocalPlayer:FindFirstChild("IsHeld")
+
+local antiGrabActive = false
+local antiGrabConnections = {}
+local antiGrabHardFreeze = false
+local antiGrabAnchorConn = nil
+local antiGrabRootCF = nil
+
+-- Освобождение после граба
+local function antiGrabUnfreeze()
+    local char = LocalPlayer.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Anchored = false
+        if hrp:FindFirstChild("FreezeJoint") then
+            hrp.FreezeJoint:Destroy()
+        end
+    end
+    antiGrabHardFreeze = false
+    if antiGrabAnchorConn then
+        antiGrabAnchorConn:Disconnect()
+        antiGrabAnchorConn = nil
+    end
+end
+
+-- Жёсткая фиксация на месте (AlignPosition)
+local function antiGrabFreezeInPlace(char)
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    antiGrabRootCF = hrp.CFrame
+    antiGrabHardFreeze = true
+    if not hrp:FindFirstChild("FreezeJoint") then
+        local align = Instance.new("AlignPosition")
+        align.Name = "FreezeJoint"
+        align.Mode = Enum.PositionAlignmentMode.OneAttachment
+        align.MaxForce = 1e6
+        align.MaxVelocity = 0
+        align.Responsiveness = 200
+        local att = Instance.new("Attachment", hrp)
+        align.Attachment0 = att
+        align.Position = hrp.Position
+        align.Parent = hrp
+    end
+    if antiGrabAnchorConn then antiGrabAnchorConn:Disconnect() end
+    antiGrabAnchorConn = RunService.Heartbeat:Connect(function()
+        if antiGrabHardFreeze and hrp and hrp.Parent then
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            hrp.CFrame = antiGrabRootCF
+        end
+    end)
+end
+
+-- Главная функция анти-граба
+local function startAntiGrab()
+    -- Сброс старых подключений
+    for _, conn in pairs(antiGrabConnections) do
+        if conn then pcall(function() conn:Disconnect() end) end
+    end
+    antiGrabConnections = {}
+    antiGrabUnfreeze()
+    
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local hum = char:WaitForChild("Humanoid")
+    local hrp = char:WaitForChild("HumanoidRootPart")
+    local head = char:WaitForChild("Head")
+    
+    -- 1. Блокировка посадки на чужой стул/блобмена
+    local sitConnection = hum.Changed:Connect(function(prop)
+        if prop == "Sit" and hum.Sit and antiGrabActive then
+            if hum.SeatPart and tostring(hum.SeatPart.Parent) ~= "CreatureBlobman" then
+                hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+                hum.Sit = false
+            end
+        end
+    end)
+    table.insert(antiGrabConnections, sitConnection)
+    
+    -- 2. Отслеживание появления PartOwner на голове
+    local partOwnerConnection = nil
+    local function onPartOwnerAdded(partOwner)
+        if not antiGrabActive then return end
+        if partOwner.Name == "PartOwner" then
+            task.spawn(function()
+                -- Спамим Struggle
+                if Struggle then
+                    for i = 1, 10 do
+                        pcall(function() Struggle:FireServer(LocalPlayer) end)
+                        task.wait(0.05)
+                    end
+                end
+                -- Размягчаем себя
+                if RagdollRemote then
+                    pcall(function() RagdollRemote:FireServer(hrp, 0) end)
+                end
+                -- Снимаем владельца сети
+                if SetNetworkOwner then
+                    pcall(function() SetNetworkOwner:FireServer(hrp, hrp.CFrame) end)
+                end
+                -- Якорим и фиксируем
+                hrp.Anchored = true
+                antiGrabFreezeInPlace(char)
+                -- Ждём пока отпустят
+                local held = LocalPlayer:FindFirstChild("IsHeld")
+                while held and held.Value and antiGrabActive do
+                    if Struggle then pcall(function() Struggle:FireServer(LocalPlayer) end) end
+                    task.wait(0.1)
+                end
+                -- Освобождаем
+                hrp.Anchored = false
+                antiGrabUnfreeze()
+            end)
+        end
+    end
+    
+    partOwnerConnection = head.ChildAdded:Connect(onPartOwnerAdded)
+    table.insert(antiGrabConnections, partOwnerConnection)
+    
+    -- 3. Отслеживание IsHeld (доп. защита)
+    if isHeld then
+        local heldConnection = isHeld.Changed:Connect(function(heldState)
+            if heldState and antiGrabActive then
+                task.spawn(function()
+                    for i = 1, 5 do
+                        if Struggle then pcall(function() Struggle:FireServer(LocalPlayer) end) end
+                        if RagdollRemote then pcall(function() RagdollRemote:FireServer(hrp, 0) end) end
+                        task.wait(0.1)
+                    end
+                    hrp.Anchored = true
+                    task.wait(0.3)
+                    hrp.Anchored = false
+                end)
+            end
+        end)
+        table.insert(antiGrabConnections, heldConnection)
+    end
+    
+    -- 4. Снятие граба через Heartbeat (на всякий случай)
+    local heartbeatConnection = RunService.Heartbeat:Connect(function()
+        if not antiGrabActive then return end
+        local char = LocalPlayer.Character
+        if char and char.Head and char.Head:FindFirstChild("PartOwner") then
+            if Struggle then pcall(function() Struggle:FireServer(LocalPlayer) end) end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then hrp.Anchored = true end
+            if RagdollRemote then pcall(function() RagdollRemote:FireServer(hrp, 0) end) end
+        end
+    end)
+    table.insert(antiGrabConnections, heartbeatConnection)
+    
+    -- 5. Обработка респавна персонажа
+    local charAddedConnection = LocalPlayer.CharacterAdded:Connect(function(newChar)
+        task.wait(0.5)
+        if antiGrabActive then
+            for _, conn in pairs(antiGrabConnections) do
+                if conn then pcall(function() conn:Disconnect() end) end
+            end
+            antiGrabConnections = {}
+            startAntiGrab()
+        end
+    end)
+    table.insert(antiGrabConnections, charAddedConnection)
+end
+
+local function stopAntiGrab()
+    antiGrabActive = false
+    for _, conn in pairs(antiGrabConnections) do
+        if conn then pcall(function() conn:Disconnect() end) end
+    end
+    antiGrabConnections = {}
+    antiGrabUnfreeze()
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") then part.Anchored = false end
+        end
+    end
+end
+
+-- Обновляем или создаём Toggle
+local antiGrabToggle = nil
+for _, item in pairs(DefenseLeftGroup:GetChildren()) do
+    if item.Name == "AntiGrab" then
+        antiGrabToggle = item
+        break
+    end
+end
+
+if antiGrabToggle then
+    antiGrabToggle.Callback = function(Value)
+        antiGrabActive = Value
+        if Value then startAntiGrab() else stopAntiGrab() end
+    end
+else
+    DefenseLeftGroup:AddToggle("AntiGrab", {
+        Text = "Анти Граб (Объединённый)",
+        Default = false,
+        Callback = function(Value)
+            antiGrabActive = Value
+            if Value then startAntiGrab() else stopAntiGrab() end
+        end
+    })
+end
+
 print("Меню загружено")
