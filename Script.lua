@@ -404,49 +404,6 @@ DefenseLeftGroup:AddToggle("AntiGrab", {
 })
 
 -- ============================================
--- Анти Кик Хитбокс
--- ============================================
-
-local antiKickHitboxActive = false
-local antiKickHitboxConn = nil
-
-local function startAntiKickHitbox()
-    if antiKickHitboxConn then antiKickHitboxConn:Disconnect() end
-    antiKickHitboxConn = RunService.Heartbeat:Connect(function()
-        if not antiKickHitboxActive then return end
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart") then
-            local hrp = char.HumanoidRootPart
-            local fpp = hrp:FindFirstChild("FirePlayerPart")
-            if fpp and fpp:FindFirstChild("PartOwner") then
-                if Struggle then 
-                    pcall(function() Struggle:FireServer(LocalPlayer) end)
-                end
-                hrp.Anchored = true
-                task.wait(0.05)
-                hrp.Anchored = false
-            end
-        end
-    end)
-end
-
-DefenseLeftGroup:AddToggle("AntiKickHitbox", {
-    Text = "Анти Кик Хитбокс",
-    Default = false,
-    Callback = function(Value)
-        antiKickHitboxActive = Value
-        if Value then
-            startAntiKickHitbox()
-        else
-            if antiKickHitboxConn then
-                antiKickHitboxConn:Disconnect()
-                antiKickHitboxConn = nil
-            end
-        end
-    end
-})
-
--- ============================================
 -- Авто Ресет
 -- ============================================
 
@@ -960,7 +917,8 @@ SmileGroup:AddToggle("ServerLagToggle", {
     Default = false,
     Callback = function(Value)
         serverLagActive = Value
-        if Value then            serverLagTask = task.spawn(function()
+        if Value then
+            serverLagTask = task.spawn(function()
                 ServerLagFunction(serverLagIntensity)
             end)
         else
